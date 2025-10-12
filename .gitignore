@@ -1,0 +1,23 @@
+# Local settings
+.claude/settings.local.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Dependencies (when we eventually have them)
+node_modules/
+
+# Build outputs (for GitHub CI)
+dist/
+build/
