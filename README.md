@@ -7,6 +7,11 @@
    ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
 ```
 
+[![GitHub stars](https://img.shields.io/github/stars/kkurian/typeattack?style=social)](https://github.com/kkurian/typeattack/stargazers)
+[![License](https://img.shields.io/github/license/kkurian/typeattack)](https://github.com/kkurian/typeattack/blob/main/LICENSE)
+[![Play Online](https://img.shields.io/badge/play-online-green)](https://kkurian.github.io/typeattack/)
+[![GitHub Pages](https://github.com/kkurian/typeattack/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/kkurian/typeattack/actions)
+
 **Type fast. Type well. Type to survive.**
 
 The future of programming: Start multiple AI assistants working on different code. Disconnect. They keep working. Reconnect from anywhere.
@@ -44,7 +49,7 @@ open index.html
 
 ## License
 
-MIT
+AGPL-3.0
 
 ---
 

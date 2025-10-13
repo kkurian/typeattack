@@ -1,0 +1,451 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TypeAttack Game State",
+  "description": "Complete game state for TypeAttack typing game",
+  "type": "object",
+  "required": ["playerProgress", "version"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Storage schema version",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "playerProgress": {
+      "$ref": "#/definitions/PlayerProgress"
+    },
+    "currentSession": {
+      "$ref": "#/definitions/GameSession"
+    },
+    "recentChallenges": {
+      "type": "array",
+      "description": "Last 50 challenges completed",
+      "maxItems": 50,
+      "items": {
+        "$ref": "#/definitions/Challenge"
+      }
+    }
+  },
+  "definitions": {
+    "PlayerProgress": {
+      "type": "object",
+      "required": ["id", "createdAt", "levels", "settings"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Player identifier"
+        },
+        "createdAt": {
+          "type": "integer",
+          "description": "Unix timestamp of first play"
+        },
+        "lastPlayedAt": {
+          "type": "integer",
+          "description": "Unix timestamp of last activity"
+        },
+        "totalPlayTime": {
+          "type": "integer",
+          "description": "Total milliseconds played",
+          "minimum": 0
+        },
+        "levels": {
+          "type": "object",
+          "required": ["typing", "vim", "tmux"],
+          "properties": {
+            "typing": {
+              "$ref": "#/definitions/LevelProgress"
+            },
+            "vim": {
+              "$ref": "#/definitions/VimLevelProgress"
+            },
+            "tmux": {
+              "$ref": "#/definitions/TmuxLevelProgress"
+            }
+          }
+        },
+        "settings": {
+          "$ref": "#/definitions/Settings"
+        }
+      }
+    },
+    "LevelProgress": {
+      "type": "object",
+      "required": ["proficiency", "unlocked", "completed"],
+      "properties": {
+        "proficiency": {
+          "type": "integer",
+          "description": "Current proficiency percentage",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "unlocked": {
+          "type": "boolean",
+          "description": "Whether level is accessible"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Whether 80% proficiency reached"
+        },
+        "bestWPM": {
+          "type": "integer",
+          "description": "Best words per minute achieved",
+          "minimum": 0
+        },
+        "totalWords": {
+          "type": "integer",
+          "description": "Total words typed",
+          "minimum": 0
+        },
+        "totalErrors": {
+          "type": "integer",
+          "description": "Total errors made",
+          "minimum": 0
+        },
+        "sessionsCompleted": {
+          "type": "integer",
+          "description": "Number of practice sessions",
+          "minimum": 0
+        }
+      }
+    },
+    "VimLevelProgress": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/LevelProgress"
+        },
+        {
+          "properties": {
+            "commandsLearned": {
+              "type": "array",
+              "description": "Vim commands successfully used",
+              "items": {
+                "type": "string"
+              }
+            },
+            "totalChallenges": {
+              "type": "integer",
+              "description": "Total challenges attempted",
+              "minimum": 0
+            },
+            "perfectSolutions": {
+              "type": "integer",
+              "description": "Challenges solved optimally",
+              "minimum": 0
+            },
+            "averageEfficiency": {
+              "type": "number",
+              "description": "Average keystroke efficiency",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      ]
+    },
+    "TmuxLevelProgress": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/LevelProgress"
+        },
+        {
+          "properties": {
+            "stagesCompleted": {
+              "type": "array",
+              "description": "Array of completed stage numbers",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 6
+              }
+            },
+            "totalMissions": {
+              "type": "integer",
+              "description": "Total missions attempted",
+              "minimum": 0
+            },
+            "currentStage": {
+              "type": "integer",
+              "description": "Current stage being attempted",
+              "minimum": 1,
+              "maximum": 6
+            }
+          }
+        }
+      ]
+    },
+    "Settings": {
+      "type": "object",
+      "properties": {
+        "soundEnabled": {
+          "type": "boolean",
+          "description": "Sound effects on/off",
+          "default": false
+        },
+        "volume": {
+          "type": "number",
+          "description": "Volume level",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.5
+        },
+        "showFPS": {
+          "type": "boolean",
+          "description": "Show FPS counter",
+          "default": false
+        },
+        "highContrast": {
+          "type": "boolean",
+          "description": "Accessibility mode",
+          "default": false
+        }
+      }
+    },
+    "GameSession": {
+      "type": "object",
+      "required": ["id", "startTime", "level"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique session identifier"
+        },
+        "startTime": {
+          "type": "integer",
+          "description": "Session start timestamp"
+        },
+        "endTime": {
+          "type": ["integer", "null"],
+          "description": "Session end timestamp"
+        },
+        "duration": {
+          "type": "integer",
+          "description": "Milliseconds played",
+          "minimum": 0
+        },
+        "level": {
+          "type": "string",
+          "enum": ["typing", "vim", "tmux"],
+          "description": "Current level being played"
+        },
+        "challenges": {
+          "type": "array",
+          "description": "Challenge IDs in this session",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stats": {
+          "$ref": "#/definitions/SessionStats"
+        },
+        "interrupted": {
+          "type": "boolean",
+          "description": "Whether session was incomplete",
+          "default": false
+        }
+      }
+    },
+    "SessionStats": {
+      "type": "object",
+      "properties": {
+        "wordsTyped": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "errorsMade": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "averageWPM": {
+          "type": "number",
+          "minimum": 0
+        },
+        "proficiencyGained": {
+          "type": "number",
+          "description": "Proficiency percentage gained"
+        },
+        "commandsLearned": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stagesUnlocked": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "Challenge": {
+      "type": "object",
+      "required": ["id", "type", "level"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique challenge identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["typing", "vim", "tmux"],
+          "description": "Challenge type"
+        },
+        "level": {
+          "type": "integer",
+          "description": "Difficulty level within type",
+          "minimum": 1
+        },
+        "typing": {
+          "$ref": "#/definitions/TypingChallenge"
+        },
+        "vim": {
+          "$ref": "#/definitions/VimChallenge"
+        },
+        "tmux": {
+          "$ref": "#/definitions/TmuxChallenge"
+        }
+      }
+    },
+    "TypingChallenge": {
+      "type": "object",
+      "properties": {
+        "targetText": {
+          "type": "array",
+          "description": "Words to type",
+          "items": {
+            "type": "string"
+          }
+        },
+        "startTime": {
+          "type": "integer"
+        },
+        "endTime": {
+          "type": "integer"
+        },
+        "wordsCompleted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalKeystrokes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "correctKeystrokes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "wpm": {
+          "type": "number",
+          "minimum": 0
+        },
+        "accuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "failed": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "VimChallenge": {
+      "type": "object",
+      "properties": {
+        "corruption": {
+          "type": "object",
+          "properties": {
+            "before": {
+              "type": "string",
+              "description": "Text with corruption"
+            },
+            "after": {
+              "type": "string",
+              "description": "Target text"
+            },
+            "cursorStart": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "cursorEnd": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        "playerSolution": {
+          "type": "string",
+          "description": "Player's keystroke sequence"
+        },
+        "optimalSolution": {
+          "type": "string",
+          "description": "Optimal solution"
+        },
+        "efficiency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "timeSpent": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hintsUsed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "TmuxChallenge": {
+      "type": "object",
+      "properties": {
+        "panes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "challenge": {
+                "type": "string",
+                "description": "Reference to vim challenge"
+              },
+              "completed": {
+                "type": "boolean"
+              },
+              "timeSpent": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "commands": {
+          "type": "array",
+          "description": "Commands executed",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalTime": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        }
+      }
+    }
+  }
+}

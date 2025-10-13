@@ -37,11 +37,11 @@ The game must be enjoyable. If a feature makes it less fun to learn typing/vim/t
 
 ### III. Progressive Mastery
 
-Teach regular typing to 80% proficiency first, then vim keystrokes to 80%, then tmux/mosh to 80%. Don't overwhelm learners.
+Teach regular typing to 80% proficiency first, then vim keystrokes to 80%, then tmux to 80%. Don't overwhelm learners.
 
 ### IV. Client-Side Only
 
-Everything runs in the browser. Progress stored in cookies. No servers, no accounts, no network calls except to load the static files.
+Everything runs in the browser. Progress stored in localStorage. No servers, no accounts, no network calls except to load the static files.
 
 ### V. Desktop-First
 
