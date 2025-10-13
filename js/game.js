@@ -128,18 +128,6 @@ class TypeAttackGame {
         if (pauseBtn) {
             pauseBtn.addEventListener('click', () => this.togglePause());
         }
-
-        // Restart button
-        const restartBtn = document.getElementById('restart-button');
-        if (restartBtn) {
-            restartBtn.addEventListener('click', () => this.restartLevel());
-        }
-
-        // Menu button
-        const menuBtn = document.getElementById('menu-button');
-        if (menuBtn) {
-            menuBtn.addEventListener('click', () => this.showMenu());
-        }
     }
 
     /**
@@ -342,7 +330,7 @@ class TypeAttackGame {
         // Update pause button
         const pauseBtn = document.getElementById('pause-button');
         if (pauseBtn) {
-            pauseBtn.textContent = '▶ RESUME';
+            pauseBtn.textContent = 'RESUME';
         }
 
         Utils.log.debug('Game paused');
@@ -358,7 +346,7 @@ class TypeAttackGame {
         // Update pause button
         const pauseBtn = document.getElementById('pause-button');
         if (pauseBtn) {
-            pauseBtn.textContent = '⏸ PAUSE';
+            pauseBtn.textContent = 'PAUSE';
         }
 
         Utils.log.debug('Game resumed');
@@ -441,34 +429,36 @@ class TypeAttackGame {
     updateProgressDisplay() {
         const progress = this.state.playerProgress;
 
-        // Update typing progress
-        const typingBar = document.getElementById('typing-progress');
-        if (typingBar) {
-            typingBar.querySelector('.progress-fill').style.setProperty('--progress', `${progress.typingProficiency}%`);
-            typingBar.querySelector('.progress-percent').textContent = `${Math.round(progress.typingProficiency)}%`;
-        }
-
-        // Update vim progress
-        const vimBar = document.getElementById('vim-progress');
-        if (vimBar) {
-            if (progress.vimUnlocked) {
-                vimBar.classList.remove('locked');
-                vimBar.querySelector('.progress-fill').style.setProperty('--progress', `${progress.vimProficiency}%`);
-                vimBar.querySelector('.progress-percent').textContent = `${Math.round(progress.vimProficiency)}%`;
-            } else {
-                vimBar.querySelector('.progress-percent').textContent = '🔒';
+        // Update typing level
+        const typingLevel = document.getElementById('typing-level');
+        if (typingLevel) {
+            const fill = typingLevel.querySelector('.level-fill');
+            if (fill) {
+                fill.style.width = `${progress.typingProficiency}%`;
             }
         }
 
-        // Update tmux progress
-        const tmuxBar = document.getElementById('tmux-progress');
-        if (tmuxBar) {
+        // Update vim level
+        const vimLevel = document.getElementById('vim-level');
+        if (vimLevel) {
+            if (progress.vimUnlocked) {
+                vimLevel.classList.remove('locked');
+                const fill = vimLevel.querySelector('.level-fill');
+                if (fill) {
+                    fill.style.width = `${progress.vimProficiency}%`;
+                }
+            }
+        }
+
+        // Update tmux level
+        const tmuxLevel = document.getElementById('tmux-level');
+        if (tmuxLevel) {
             if (progress.tmuxUnlocked) {
-                tmuxBar.classList.remove('locked');
-                tmuxBar.querySelector('.progress-fill').style.setProperty('--progress', `${progress.tmuxProficiency}%`);
-                tmuxBar.querySelector('.progress-percent').textContent = `${Math.round(progress.tmuxProficiency)}%`;
-            } else {
-                tmuxBar.querySelector('.progress-percent').textContent = '🔒';
+                tmuxLevel.classList.remove('locked');
+                const fill = tmuxLevel.querySelector('.level-fill');
+                if (fill) {
+                    fill.style.width = `${progress.tmuxProficiency}%`;
+                }
             }
         }
     }

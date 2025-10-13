@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TypeAttack - Type Fast. Type Well. Type to Survive.</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
@@ -29,37 +30,40 @@
 
     <!-- UI Overlay -->
     <div id="ui-overlay">
-        <!-- Game Control Buttons -->
-        <div id="game-controls">
-            <button id="pause-button" class="control-button" style="display:none;">⏸ PAUSE</button>
-            <button id="restart-button" class="control-button" style="display:none;">↻ RESTART</button>
-            <button id="menu-button" class="control-button" style="display:none;">☰ MENU</button>
-        </div>
+        <!-- Top Bar -->
+        <div id="top-bar">
+            <!-- Left: Control Button -->
+            <div id="game-controls">
+                <button id="pause-button" class="control-button" style="display:none;">PAUSE</button>
+            </div>
 
-        <!-- Progress Bar -->
-        <div id="progress-bar">
-            <div id="typing-progress" class="progress-segment">
-                <span class="progress-label">Typing</span>
-                <div class="progress-fill"></div>
-                <span class="progress-percent">0%</span>
+            <!-- Center: Level Progress -->
+            <div id="level-progress">
+                <div class="level-indicator" id="typing-level">
+                    <span class="level-name">TYPING</span>
+                    <div class="level-bar"><div class="level-fill"></div></div>
+                </div>
+                <div class="level-indicator locked" id="vim-level">
+                    <span class="level-name">VIM</span>
+                    <div class="level-bar"><div class="level-fill"></div></div>
+                </div>
+                <div class="level-indicator locked" id="tmux-level">
+                    <span class="level-name">TMUX</span>
+                    <div class="level-bar"><div class="level-fill"></div></div>
+                </div>
             </div>
-            <div id="vim-progress" class="progress-segment locked">
-                <span class="progress-label">Vim</span>
-                <div class="progress-fill"></div>
-                <span class="progress-percent">🔒</span>
-            </div>
-            <div id="tmux-progress" class="progress-segment locked">
-                <span class="progress-label">Tmux</span>
-                <div class="progress-fill"></div>
-                <span class="progress-percent">🔒</span>
-            </div>
-        </div>
 
-        <!-- Score Display -->
-        <div id="score-display">
-            <div id="wpm">0 WPM</div>
-            <div id="accuracy">100%</div>
-            <div id="streak">0</div>
+            <!-- Right: Stats -->
+            <div id="stats-display">
+                <div class="stat-item">
+                    <span class="stat-value" id="wpm-display">0</span>
+                    <span class="stat-label">WPM</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="accuracy-display">100%</span>
+                    <span class="stat-label">ACC</span>
+                </div>
+            </div>
         </div>
 
         <!-- FPS Counter -->
@@ -84,9 +88,6 @@
         </pre>
         <h2>Type fast. Type well. Type to survive.</h2>
         <button id="start-button" class="game-button">START GAME</button>
-        <div id="instructions">
-            <p>Click START to begin • Click pause button during game</p>
-        </div>
     </div>
 
     <!-- Load all JavaScript modules -->

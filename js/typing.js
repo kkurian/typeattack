@@ -13,12 +13,11 @@ class TypingLevel {
         this.typedText = '';
         this.score = 0;
         this.streak = 0;
-        this.lives = 3;
 
         // Timing
         this.spawnTimer = 0;
-        this.spawnInterval = 2; // seconds between word spawns
-        this.baseSpeed = 50; // pixels per second
+        this.spawnInterval = 2.5; // seconds between word spawns
+        this.baseSpeed = 40; // pixels per second (slower start)
         this.currentSpeed = this.baseSpeed;
 
         // Statistics
@@ -38,15 +37,32 @@ class TypingLevel {
         this.requiredSustainTime = 60; // 1 minute at target WPM
 
         // Difficulty progression
-        this.difficulty = 'letters'; // letters, short, long
-        this.difficultyProgress = 0;
+        this.currentStage = 0;
+        this.stages = [
+            { name: 'homeKeys', difficulty: 'letters', wordsToPass: 10 },
+            { name: 'homeKeys', difficulty: 'short', wordsToPass: 15 },
+            { name: 'homeKeys', difficulty: 'medium', wordsToPass: 15 },
+            { name: 'easyKeys', difficulty: 'short', wordsToPass: 20 },
+            { name: 'easyKeys', difficulty: 'medium', wordsToPass: 20 },
+            { name: 'allKeys', difficulty: 'short', wordsToPass: 20 },
+            { name: 'allKeys', difficulty: 'medium', wordsToPass: 25 },
+            { name: 'allKeys', difficulty: 'mixed', wordsToPass: 30 }
+        ];
+        this.wordsInCurrentStage = 0;
 
         // Visual effects
         this.lasers = [];
         this.explosions = [];
 
+        // Vertical positioning lanes
+        this.lanes = [0.3, 0.4, 0.5, 0.6, 0.7]; // Percentage of screen height
+        this.lastLane = 0;
+
         // Keyboard handler
         this.keyHandler = null;
+
+        // Level complete flag
+        this.levelCompleted = false;
     }
 
     /**
@@ -72,7 +88,6 @@ class TypingLevel {
         this.typedText = '';
         this.score = 0;
         this.streak = 0;
-        this.lives = 3;
         this.spawnTimer = 0;
         this.totalKeystrokes = 0;
         this.correctKeystrokes = 0;
@@ -83,6 +98,10 @@ class TypingLevel {
         this.sustainedSeconds = 0;
         this.lasers = [];
         this.explosions = [];
+        this.currentStage = 0;
+        this.wordsInCurrentStage = 0;
+        this.currentSpeed = this.baseSpeed;
+        this.levelCompleted = false;
     }
 
     /**
@@ -99,6 +118,11 @@ class TypingLevel {
      * @param {number} deltaTime - Time since last update in seconds
      */
     update(deltaTime) {
+        if (this.levelCompleted) {
+            this.updateLevelCompleteAnimation(deltaTime);
+            return;
+        }
+
         // Update spawn timer
         this.spawnTimer += deltaTime;
         if (this.spawnTimer >= this.spawnInterval) {
@@ -109,6 +133,11 @@ class TypingLevel {
         // Update words
         for (let i = this.words.length - 1; i >= 0; i--) {
             const word = this.words[i];
+
+            // Store previous position for smooth interpolation
+            word.prevX = word.x;
+
+            // Update position
             word.x += this.currentSpeed * deltaTime;
 
             // Check if word reached right edge (fail condition)
@@ -138,12 +167,20 @@ class TypingLevel {
     spawnWord() {
         const text = this.generateWord();
 
+        // Choose a lane different from the last one to avoid overlap
+        let lane;
+        do {
+            lane = Math.floor(Math.random() * this.lanes.length);
+        } while (lane === this.lastLane && this.lanes.length > 1);
+        this.lastLane = lane;
+
         const word = {
             id: Utils.generateId(),
             text: text,
             typedIndex: 0,
-            x: -100, // Start off-screen left
-            y: this.game.renderer.height / 2,
+            x: -150, // Start off-screen left
+            prevX: -150, // Previous position for interpolation
+            y: this.game.renderer.height * this.lanes[lane],
             width: this.game.renderer.measureText(text, 'large'),
             isActive: false,
             isCompleted: false
@@ -157,23 +194,9 @@ class TypingLevel {
      * @returns {string}
      */
     generateWord() {
-        const letters = 'abcdefghijklmnopqrstuvwxyz';
-        const shortWords = ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her'];
-        const longWords = ['javascript', 'function', 'variable', 'constant', 'typescript', 'programming'];
-
-        switch (this.difficulty) {
-            case 'letters':
-                return letters[Math.floor(Math.random() * letters.length)];
-
-            case 'short':
-                return Utils.randomElement(shortWords);
-
-            case 'long':
-                return Utils.randomElement(longWords);
-
-            default:
-                return Utils.randomElement(shortWords);
-        }
+        const stage = this.stages[this.currentStage];
+        const words = WordCorpus.getWords(stage.difficulty, stage.name);
+        return Utils.randomElement(words);
     }
 
     /**
@@ -204,10 +227,10 @@ class TypingLevel {
      * @param {Object} data - Keyboard event data
      */
     handleKeyInput(data) {
-        if (this.activeWordIndex === -1) return;
+        if (this.activeWordIndex === -1 || this.levelCompleted) return;
 
         const activeWord = this.words[this.activeWordIndex];
-        if (!activeWord || activeWord.isCompleted) return;
+        if (!activeWord || activeWord.isCompleted || activeWord.fullTyped) return;
 
         const key = data.key;
 
@@ -244,7 +267,13 @@ class TypingLevel {
 
             // Check if word is complete
             if (activeWord.typedIndex >= activeWord.text.length) {
-                this.completeWord(activeWord);
+                // Mark word as complete but delay the laser effect
+                // This allows the last letter to be rendered green first
+                activeWord.fullTyped = true;
+                // Don't clear typedText yet - let it show under the word
+                setTimeout(() => {
+                    this.completeWord(activeWord);
+                }, 150); // 150ms delay to show the completed word with typed text
             }
         } else {
             // Incorrect keystroke
@@ -263,26 +292,24 @@ class TypingLevel {
     completeWord(word) {
         word.isCompleted = true;
         this.wordsCompleted++;
-        this.score += word.text.length * 10;
+        this.wordsInCurrentStage++;
+        this.score += word.text.length * 10 * Math.max(1, Math.floor(this.streak / 5));
+
+        // Clear typed text now that the word is complete
         this.typedText = '';
 
-        // Create laser effect
-        this.createLaser(word.x + word.width / 2, word.y);
+        // Store word reference for laser to find it
+        word.hitTime = Date.now();
+
+        // Create laser effect FROM BOTTOM - target the actual rendered position
+        // Use the current interpolated position for accurate targeting
+        const targetX = word.x + word.width / 2;
+        this.createLaser(targetX, word.y, word);
 
         // Play laser sound
         window.AudioManager.playLaser();
 
-        // Remove word after short delay
-        setTimeout(() => {
-            const index = this.words.indexOf(word);
-            if (index !== -1) {
-                this.createExplosion(word.x + word.width / 2, word.y);
-                window.AudioManager.playExplosion();
-                this.words.splice(index, 1);
-            }
-        }, 100);
-
-        // Update difficulty progression
+        // Check difficulty progression
         this.updateDifficulty();
     }
 
@@ -291,27 +318,29 @@ class TypingLevel {
      * @param {Object} word
      */
     wordReachedEdge(word) {
-        this.lives--;
         this.streak = 0;
-
         window.AudioManager.playError();
-
-        if (this.lives <= 0) {
-            this.gameOver();
-        }
+        // Just continue playing - no game over
     }
 
+
     /**
-     * Create laser effect
-     * @param {number} x
-     * @param {number} y
+     * Create laser effect FROM BOTTOM OF SCREEN
+     * @param {number} targetX - Target X position
+     * @param {number} targetY - Target Y position
+     * @param {Object} targetWord - The word being targeted
      */
-    createLaser(x, y) {
+    createLaser(targetX, targetY, targetWord) {
+        // Laser shoots from bottom of screen to the word
         this.lasers.push({
-            x: x,
-            y: y,
-            speed: 500,
-            life: 1
+            startX: targetX,
+            startY: this.game.renderer.height,
+            targetX: targetX,
+            targetY: targetY,
+            targetWord: targetWord,
+            progress: 0,
+            speed: 3, // Progress speed (0 to 1)
+            hasHit: false
         });
     }
 
@@ -322,12 +351,12 @@ class TypingLevel {
      */
     createExplosion(x, y) {
         const particles = [];
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 15; i++) {
             particles.push({
                 x: x,
                 y: y,
-                vx: (Math.random() - 0.5) * 200,
-                vy: (Math.random() - 0.5) * 200,
+                vx: (Math.random() - 0.5) * 300,
+                vy: (Math.random() - 0.5) * 300,
                 life: 1
             });
         }
@@ -347,10 +376,36 @@ class TypingLevel {
     updateLasers(deltaTime) {
         for (let i = this.lasers.length - 1; i >= 0; i--) {
             const laser = this.lasers[i];
-            laser.y -= laser.speed * deltaTime;
-            laser.life -= deltaTime * 2;
+            laser.progress += laser.speed * deltaTime;
 
-            if (laser.life <= 0 || laser.y < 0) {
+            // Update laser target position to follow the moving word
+            if (laser.targetWord && !laser.hasHit) {
+                laser.targetX = laser.targetWord.x + laser.targetWord.width / 2;
+            }
+
+            // When laser reaches target, create explosion
+            if (laser.progress >= 1 && !laser.hasHit) {
+                laser.hasHit = true;
+
+                // Create explosion at the word's current position
+                if (laser.targetWord) {
+                    const explosionX = laser.targetWord.x + laser.targetWord.width / 2;
+                    this.createExplosion(explosionX, laser.targetY);
+
+                    // IMMEDIATELY remove the word
+                    const index = this.words.indexOf(laser.targetWord);
+                    if (index !== -1) {
+                        this.words.splice(index, 1);
+                    }
+                } else {
+                    this.createExplosion(laser.targetX, laser.targetY);
+                }
+
+                window.AudioManager.playExplosion();
+            }
+
+            // Remove laser after animation completes
+            if (laser.progress >= 1.2) {
                 this.lasers.splice(i, 1);
             }
         }
@@ -369,6 +424,7 @@ class TypingLevel {
             explosion.particles.forEach(particle => {
                 particle.x += particle.vx * deltaTime;
                 particle.y += particle.vy * deltaTime;
+                particle.vy += 500 * deltaTime; // Gravity
                 particle.life = explosion.life;
             });
 
@@ -382,25 +438,23 @@ class TypingLevel {
      * Update difficulty based on performance
      */
     updateDifficulty() {
-        this.difficultyProgress++;
+        const stage = this.stages[this.currentStage];
 
-        // Progress through difficulties
-        if (this.difficulty === 'letters' && this.difficultyProgress >= 10) {
-            this.difficulty = 'short';
-            this.difficultyProgress = 0;
-            this.currentSpeed = this.baseSpeed * 1.2;
-            Utils.log.info('Difficulty increased to short words');
-        } else if (this.difficulty === 'short' && this.difficultyProgress >= 20) {
-            this.difficulty = 'long';
-            this.difficultyProgress = 0;
-            this.currentSpeed = this.baseSpeed * 1.5;
-            Utils.log.info('Difficulty increased to long words');
-        }
+        // Check if ready to advance to next stage
+        if (this.wordsInCurrentStage >= stage.wordsToPass) {
+            if (this.currentStage < this.stages.length - 1) {
+                this.currentStage++;
+                this.wordsInCurrentStage = 0;
 
-        // Gradually increase speed
-        if (this.wordsCompleted % 5 === 0) {
-            this.currentSpeed *= 1.05;
-            this.spawnInterval = Math.max(1, this.spawnInterval * 0.95);
+                // Gradually increase speed with each stage
+                this.currentSpeed = this.baseSpeed * (1 + this.currentStage * 0.15);
+
+                // Slightly decrease spawn interval for more challenge
+                this.spawnInterval = Math.max(1.5, 2.5 - this.currentStage * 0.1);
+
+                const newStage = this.stages[this.currentStage];
+                Utils.log.info(`Advanced to stage: ${newStage.name} - ${newStage.difficulty}`);
+            }
         }
     }
 
@@ -429,7 +483,7 @@ class TypingLevel {
                 if (currentWPM >= this.targetWPM) {
                     this.sustainedSeconds++;
 
-                    if (this.sustainedSeconds >= this.requiredSustainTime) {
+                    if (this.sustainedSeconds >= this.requiredSustainTime && !this.levelCompleted) {
                         // Achieved 48 WPM for 1 minute!
                         this.unlockNextLevel();
                     }
@@ -448,46 +502,62 @@ class TypingLevel {
      * Unlock next level
      */
     unlockNextLevel() {
+        this.levelCompleted = true;
         this.game.updateProficiency('typing', 80);
         window.AudioManager.playLevelComplete();
         Utils.log.info('Typing level completed - 48 WPM sustained for 1 minute!');
+
+        // Clear remaining words
+        this.words = [];
+
+        // Trigger level complete animation
+        this.levelCompleteTimer = 0;
+    }
+
+    /**
+     * Update level complete animation
+     * @param {number} deltaTime
+     */
+    updateLevelCompleteAnimation(deltaTime) {
+        this.levelCompleteTimer = (this.levelCompleteTimer || 0) + deltaTime;
+
+        // After 3 seconds, transition to vim level if unlocked
+        if (this.levelCompleteTimer > 3) {
+            if (this.game.state.playerProgress.vimUnlocked) {
+                this.game.loadLevel('vim');
+            } else {
+                // Reset to continue playing
+                this.levelCompleted = false;
+                this.reset();
+                this.startTime = Date.now();
+            }
+        }
     }
 
     /**
      * Update UI elements
      */
     updateUI() {
-        // Update WPM
+        // Calculate stats
         const timeMinutes = Math.max(0.01, (Date.now() - this.startTime) / 60000);
         const currentWPM = Math.round((this.charactersTyped / 5) / timeMinutes);
-        const wpmElement = document.getElementById('wpm');
-        if (wpmElement) {
-            wpmElement.textContent = `${currentWPM} WPM`;
-        }
-
-        // Update accuracy
         const accuracy = this.totalKeystrokes > 0
             ? Math.round((this.correctKeystrokes / this.totalKeystrokes) * 100)
             : 100;
-        const accuracyElement = document.getElementById('accuracy');
-        if (accuracyElement) {
-            accuracyElement.textContent = `${accuracy}%`;
+
+        // Update WPM display
+        const wpmDisplay = document.getElementById('wpm-display');
+        if (wpmDisplay) {
+            wpmDisplay.textContent = currentWPM;
         }
 
-        // Update streak
-        const streakElement = document.getElementById('streak');
-        if (streakElement) {
-            streakElement.textContent = this.streak.toString();
+        // Update accuracy display
+        const accuracyDisplay = document.getElementById('accuracy-display');
+        if (accuracyDisplay) {
+            accuracyDisplay.textContent = `${accuracy}%`;
         }
     }
 
-    /**
-     * Game over
-     */
-    gameOver() {
-        Utils.log.info('Game over - no lives remaining');
-        this.restart();
-    }
 
     /**
      * Render the level
@@ -502,26 +572,35 @@ class TypingLevel {
 
         // Draw words
         this.words.forEach(word => {
-            const x = word.x + (this.currentSpeed * interpolation);
+            // Smooth interpolation between previous and current position
+            const x = word.prevX + (word.x - word.prevX) * interpolation;
 
             // Draw word text
             if (word.isActive) {
-                // Highlight active word
-                renderer.drawText(word.text, x, word.y, {
-                    color: renderer.colors.warning,
-                    size: 'large'
-                });
-
-                // Show typed portion
-                if (word.typedIndex > 0) {
-                    const typed = word.text.substring(0, word.typedIndex);
-                    renderer.drawText(typed, x, word.y, {
+                // If word is fully typed, show all letters in green
+                if (word.fullTyped) {
+                    renderer.drawText(word.text, x, word.y, {
                         color: renderer.colors.success,
                         size: 'large'
                     });
+                } else {
+                    // Highlight active word
+                    renderer.drawText(word.text, x, word.y, {
+                        color: renderer.colors.warning,
+                        size: 'large'
+                    });
+
+                    // Show typed portion
+                    if (word.typedIndex > 0) {
+                        const typed = word.text.substring(0, word.typedIndex);
+                        renderer.drawText(typed, x, word.y, {
+                            color: renderer.colors.success,
+                            size: 'large'
+                        });
+                    }
                 }
 
-                // Show typed text below
+                // Always show typed text below active word (even when fullTyped)
                 if (this.typedText) {
                     renderer.drawText(this.typedText, x, word.y + 30, {
                         color: renderer.colors.accent,
@@ -537,27 +616,38 @@ class TypingLevel {
             }
         });
 
-        // Draw lasers
+        // Draw lasers (from bottom to word)
         this.lasers.forEach(laser => {
-            const alpha = laser.life;
-            renderer.save();
-            renderer.setAlpha(alpha);
+            if (laser.progress <= 1) {
+                // Update target position if word is still moving
+                let targetX = laser.targetX;
+                if (laser.targetWord) {
+                    // Use interpolated position for smooth tracking
+                    targetX = laser.targetWord.prevX + (laser.targetWord.x - laser.targetWord.prevX) * interpolation + laser.targetWord.width / 2;
+                }
 
-            // Draw laser beam
-            const gradient = renderer.createGradient(
-                laser.x, laser.y,
-                laser.x, laser.y - 100,
-                [
-                    { offset: 0, color: 'transparent' },
-                    { offset: 0.5, color: '#00ff00' },
-                    { offset: 1, color: '#ffffff' }
-                ]
-            );
+                const currentY = laser.startY - (laser.startY - laser.targetY) * laser.progress;
+                const alpha = 1 - (laser.progress * 0.3);
 
-            renderer.ctx.fillStyle = gradient;
-            renderer.ctx.fillRect(laser.x - 2, laser.y - 100, 4, 100);
+                renderer.save();
+                renderer.setAlpha(alpha);
 
-            renderer.restore();
+                // Draw laser beam from bottom to current position
+                const gradient = renderer.createGradient(
+                    targetX, laser.startY,
+                    targetX, currentY,
+                    [
+                        { offset: 0, color: '#00ff00' },
+                        { offset: 0.5, color: '#ffffff' },
+                        { offset: 1, color: '#00ff00' }
+                    ]
+                );
+
+                renderer.ctx.fillStyle = gradient;
+                renderer.ctx.fillRect(targetX - 2, currentY, 4, laser.startY - currentY);
+
+                renderer.restore();
+            }
         });
 
         // Draw explosions
@@ -565,7 +655,7 @@ class TypingLevel {
             explosion.particles.forEach(particle => {
                 renderer.save();
                 renderer.setAlpha(particle.life);
-                renderer.drawCircle(particle.x, particle.y, 2, {
+                renderer.drawCircle(particle.x, particle.y, 3, {
                     color: renderer.colors.warning,
                     filled: true
                 });
@@ -573,21 +663,39 @@ class TypingLevel {
             });
         });
 
-        // Draw lives
-        for (let i = 0; i < this.lives; i++) {
-            renderer.drawText('♥', 20 + i * 20, 20, {
-                color: renderer.colors.error,
-                size: 'normal'
+        // Draw progress to unlock (if close)
+        if (this.sustainedSeconds > 0 && !this.levelCompleted) {
+            const progress = (this.sustainedSeconds / this.requiredSustainTime) * 100;
+            renderer.drawText(`Unlock Progress: ${Math.round(progress)}%`,
+                renderer.width / 2, 120, {
+                color: renderer.colors.success,
+                size: 'small',
+                align: 'center'
             });
         }
 
-        // Draw progress to unlock
-        if (this.sustainedSeconds > 0) {
-            const progress = (this.sustainedSeconds / this.requiredSustainTime) * 100;
-            renderer.drawText(`Unlock Progress: ${Math.round(progress)}%`,
-                renderer.width / 2, 80, {
+        // Draw level complete message
+        if (this.levelCompleted) {
+            renderer.drawRect(0, 0, renderer.width, renderer.height, {
+                color: 'rgba(0, 0, 0, 0.7)',
+                filled: true
+            });
+
+            renderer.drawText('LEVEL COMPLETE!', renderer.width / 2, renderer.height / 2 - 50, {
                 color: renderer.colors.success,
-                size: 'small',
+                size: 'huge',
+                align: 'center'
+            });
+
+            renderer.drawText('Vim Mode Unlocked!', renderer.width / 2, renderer.height / 2, {
+                color: renderer.colors.warning,
+                size: 'large',
+                align: 'center'
+            });
+
+            renderer.drawText('Transitioning...', renderer.width / 2, renderer.height / 2 + 50, {
+                color: renderer.colors.accent,
+                size: 'normal',
                 align: 'center'
             });
         }

@@ -49,118 +49,111 @@ body {
     z-index: 100;
 }
 
-/* Game Control Buttons */
-#game-controls {
+/* Top Bar - Clean horizontal layout */
+#top-bar {
     position: absolute;
-    top: 20px;
-    left: 20px;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.9);
+    border-bottom: 1px solid #0f0;
     display: flex;
-    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
     pointer-events: auto;
 }
 
+/* Game Control Buttons */
+#game-controls {
+    display: flex;
+    gap: 8px;
+}
+
 .control-button {
-    background: rgba(0, 0, 0, 0.8);
+    background: transparent;
     color: #0f0;
     border: 1px solid #0f0;
-    padding: 8px 15px;
+    padding: 8px 16px;
     font-size: 12px;
     font-family: 'Courier New', Courier, monospace;
     cursor: pointer;
-    text-transform: uppercase;
     transition: all 0.2s ease;
-    pointer-events: auto;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .control-button:hover {
     background: #0f0;
     color: #000;
-    box-shadow: 0 0 10px #0f0;
 }
 
-/* Progress Bar */
-#progress-bar {
-    position: absolute;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+/* Level Progress - Center */
+#level-progress {
     display: flex;
-    gap: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 10px 20px;
-    border: 2px solid #0f0;
-    border-radius: 5px;
+    gap: 30px;
+    align-items: center;
 }
 
-.progress-segment {
-    min-width: 120px;
-    text-align: center;
+.level-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
 }
 
-.progress-segment.locked {
-    opacity: 0.5;
+.level-indicator.locked {
+    opacity: 0.3;
 }
 
-.progress-label {
-    display: block;
-    font-size: 12px;
-    margin-bottom: 5px;
-    text-transform: uppercase;
+.level-name {
+    font-size: 10px;
+    color: #0f0;
+    letter-spacing: 1px;
 }
 
-.progress-fill {
-    height: 8px;
-    background: #222;
+.level-bar {
+    width: 80px;
+    height: 4px;
+    background: #111;
     border: 1px solid #0f0;
     position: relative;
     overflow: hidden;
 }
 
-.progress-fill::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
+.level-fill {
     height: 100%;
     background: #0f0;
-    width: var(--progress, 0%);
+    width: 0%;
     transition: width 0.3s ease;
 }
 
-.progress-percent {
-    display: block;
-    font-size: 10px;
-    margin-top: 3px;
+/* Stats Display - Right */
+#stats-display {
+    display: flex;
+    gap: 20px;
 }
 
-/* Score Display */
-#score-display {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 10px 15px;
-    border: 2px solid #0f0;
-    border-radius: 5px;
-    font-size: 14px;
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-#score-display > div {
-    margin: 5px 0;
-}
-
-#wpm {
+.stat-value {
     font-size: 18px;
+    color: #0f0;
     font-weight: bold;
 }
 
-#accuracy::before {
-    content: 'ACC: ';
+.stat-label {
+    font-size: 10px;
+    color: #0f0;
+    opacity: 0.7;
 }
 
-#streak::before {
-    content: 'STREAK: ';
-}
 
 /* FPS Counter */
 #fps-counter {
@@ -517,17 +510,33 @@ body {
 }
 
 /* Responsive adjustments for smaller screens */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
     #title-art {
         font-size: 8px;
     }
 
-    .progress-segment {
-        min-width: 80px;
+    #top-bar {
+        padding: 0 10px;
     }
 
-    #score-display {
-        font-size: 12px;
+    .level-indicator {
+        gap: 2px;
+    }
+
+    .level-name {
+        font-size: 9px;
+    }
+
+    .level-bar {
+        width: 60px;
+    }
+
+    #level-progress {
+        gap: 15px;
+    }
+
+    .stat-value {
+        font-size: 14px;
     }
 }
 
