@@ -1,87 +1,37 @@
-<!--
-Sync Impact Report (2025-10-12)
-================================
-Version Change: 0.0.0 → 1.0.0 (MAJOR - initial constitution ratification)
-
-Modified Principles:
-- NEW: Zero Dependencies
-- NEW: Fun First
-- NEW: Progressive Mastery
-- NEW: Client-Side Only
-- NEW: Desktop-First
-
-Added Sections:
-- Core Principles (5 principles)
-- Technical Standards
-- Development Workflow
-- Governance
-
-Templates Status:
-✅ plan-template.md - Constitution Check section ready
-✅ spec-template.md - Aligned with principles
-✅ tasks-template.md - No changes needed
-✅ Command files - No updates needed
--->
-
 # TypeAttack Constitution
 
 ## Core Principles
 
 ### I. Zero Dependencies
-
-Vanilla JavaScript only. No frameworks, no build tools except what GitHub CI provides. If it can't be done in plain JS, it doesn't get done.
+Features MUST rely solely on vanilla browser APIs and standard language tooling. No npm packages, CDNs, or third-party SDKs may be introduced without a documented constitutional amendment. Any helper utilities must be authored in-repo and kept framework-free.
 
 ### II. Fun First
-
-The game must be enjoyable. If a feature makes it less fun to learn typing/vim/tmux, it gets cut.
+Every feature MUST prioritize player enjoyment and ease of engagement. Additions that introduce friction, grind, or confusing flows REQUIRE explicit sign-off in the spec describing why they still enhance fun. UX decisions SHOULD be validated through play-testing feedback captured in feature docs.
 
 ### III. Progressive Mastery
+Systems MUST support incremental skill growth for typists. Feature specs REQUIRE clear articulation of how new work reinforces practice loops rather than blocking them. Regressions that disrupt core training flows MUST be rejected in review.
 
-Teach regular typing to 80% proficiency first, then vim keystrokes to 80%, then tmux to 80%. Don't overwhelm learners.
-
-### IV. Client-Side Only
-
-Everything runs in the browser. Progress stored in localStorage. No servers, no accounts, no network calls except to load the static files.
+### IV. Client-Side Only (with Exception Protocol)
+Gameplay logic and primary experiences MUST run entirely in the browser. Any server-side or worker usage requires: (1) justification in the plan, (2) documented contracts, and (3) disclosure in tasks outlining deployment and observability steps. Violations without this protocol MUST be reverted.
 
 ### V. Desktop-First
+Typing gameplay and auxiliary tooling MUST be optimized for desktop input (keyboard + large viewport). Responsive or mobile adaptations are OPTIONAL but cannot degrade desktop ergonomics. Specs SHOULD note any mobile compromises explicitly.
 
-Built for people with physical keyboards learning command-line tools. No mobile, no touch, no compromises for non-keyboard users.
+## Additional Constraints
 
-## Technical Standards
-
-### Requirements
-- **Language**: Vanilla JavaScript, HTML, CSS only
-- **Dependencies**: None. Zero. If you need a library, write it yourself or don't do it
-- **Browser Support**: Current versions of Chrome, Firefox, Safari
-- **Build**: GitHub CI for deployment to GitHub Pages only
-
-### Code Standards
-- Keep it simple
-- No over-engineering
-- If the code needs a framework to be maintainable, the design is wrong
+- **Testing Discipline**: Automated frameworks are currently out of scope; features MUST include manual test plans or quickstart validation steps.
+- **Security & Privacy**: Any data persisted beyond the client MUST document retention, access paths, and tamper protections within the spec or contracts.
+- **Documentation**: Feature directories REQUIRE up-to-date `spec.md`, `plan.md`, `tasks.md`, and any referenced contracts before `/implement` begins.
 
 ## Development Workflow
 
-### Adding Features
-- Use Speckit (`/speckit.specify`, etc.) for major features that need planning
-- Small fixes and improvements can skip Speckit
-- Use common sense
-
-### Deployment
-- Push to main
-- GitHub CI builds and deploys to GitHub Pages
-- That's it
+1. **Spec Gate**: Specs MUST enumerate user stories, acceptance criteria, and measurable success criteria tied to the principles above.
+2. **Plan Gate**: Plans MUST call out constitutional impacts and mitigation work (e.g., server usage exceptions) prior to Phase 0 research.
+3. **Tasks Gate**: Tasks MUST provide full coverage for every requirement and success metric. Missing coverage blocks `/implement`.
+4. **Review**: Code review MUST verify compliance with principles, documentation completeness, and that manual test instructions remain executable.
 
 ## Governance
 
-This constitution keeps the project focused on teaching typing without complexity bloat.
+The constitution supersedes all other project guidance. Amendments REQUIRE a documented proposal, consensus approval, and version metadata updates here. Reviewers are RESPONSIBLE for enforcing compliance; unapproved deviations MUST be rejected or rolled back.
 
-### Amendments
-If something needs to change, change it. Document why. No bureaucracy.
-
-### Version Control
-- MAJOR: Complete principle changes
-- MINOR: New principles or sections
-- PATCH: Clarifications
-
-**Version**: 1.0.0 | **Ratified**: 2025-10-12 | **Last Amended**: 2025-10-12
+**Version**: 1.0.0 | **Ratified**: 2025-01-01 | **Last Amended**: 2025-01-20

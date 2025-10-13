@@ -162,11 +162,8 @@ As any visitor to the game, I want to view the public leaderboard showing player
 
 ### Measurable Outcomes
 
-- **SC-001**: Players can submit scores and receive user identity within 2 seconds of game completion
-- **SC-002**: System prevents 100% of duplicate game session submissions through hash validation
-- **SC-003**: Community flagging provides clear signals for manual review with flagged scores visible to developers for deletion decisions
-- **SC-004**: 95% of legitimate players successfully establish identity on first score submission
-- **SC-005**: Feedback includes full game context in 100% of submissions from active players
-- **SC-006**: System handles 1000 concurrent score views and 100 concurrent submissions without degradation
-- **SC-007**: Vote manipulation attempts are blocked with less than 5 fake votes possible per hour per source
-- **SC-008**: 100% of leaderboard scores have viewable public replays that accurately recreate the original gameplay experience
+- **SC-001**: System prevents 100% of duplicate game session submissions through hash validation
+- **SC-002**: Community flagging provides clear signals for manual review with flagged scores visible to developers for deletion decisions
+- **SC-003**: Feedback includes full game context in 100% of submissions from active players
+- **SC-004**: Vote manipulation attempts are blocked with less than 5 fake votes possible per hour per source
+- **SC-005**: 100% of leaderboard scores have viewable public replays that accurately recreate the original gameplay experience
