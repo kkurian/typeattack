@@ -58,18 +58,18 @@ class TypeAttackGame {
             }
         });
 
-        // Update start button text on mobile devices
-        // Use setTimeout to ensure DOM is fully ready
-        setTimeout(() => {
-            if (this.isMobileDevice()) {
-                const startBtn = document.getElementById('start-button');
-                if (startBtn) {
-                    startBtn.textContent = 'KEYBOARD REQUIRED';
-                    startBtn.style.cursor = 'not-allowed';
-                    startBtn.style.opacity = '0.6';
-                }
+        // Handle mobile devices - hide button, show message
+        if (this.isMobileDevice()) {
+            const startBtn = document.getElementById('start-button');
+            const mobileMsg = document.getElementById('mobile-message');
+
+            if (startBtn) {
+                startBtn.style.display = 'none';
             }
-        }, 0);
+            if (mobileMsg) {
+                mobileMsg.style.display = 'block';
+            }
+        }
 
         // Start attract mode on the start screen
         this.attractMode = new AttractMode('game-canvas');
@@ -162,16 +162,10 @@ class TypeAttackGame {
      * Setup UI event handlers
      */
     setupUI() {
-        // Start button
+        // Start button (only works on desktop - button hidden on mobile)
         const startBtn = document.getElementById('start-button');
         if (startBtn) {
-            startBtn.addEventListener('click', () => {
-                if (this.isMobileDevice()) {
-                    this.showMobileWarning();
-                } else {
-                    this.start();
-                }
-            });
+            startBtn.addEventListener('click', () => this.start());
         }
 
         // Pause button
@@ -223,14 +217,6 @@ class TypeAttackGame {
 
         // Return true if any mobile platform detected
         return isIOS || isAndroid || isOtherMobile;
-    }
-
-    /**
-     * Show mobile device warning
-     */
-    showMobileWarning() {
-        // Immediately show alert
-        alert('🎮 KEYBOARD REQUIRED\n\nTypeAttack requires a physical keyboard to play.\n\nPlease use a desktop or laptop computer.\n\nSorry for the inconvenience!');
     }
 
     /**
