@@ -22,6 +22,10 @@ class AudioManager {
         // User interaction flag for autoplay policy
         this.userInteracted = false;
 
+        // Track active oscillators to prevent overload
+        this.activeOscillators = 0;
+        this.maxOscillators = 10; // Limit concurrent sounds
+
         // Initialize on first user interaction
         this.setupUserInteraction();
     }
@@ -55,16 +59,20 @@ class AudioManager {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             this.context = new AudioContext();
 
+            // Resume context immediately if suspended (for deployed version)
+            if (this.context.state === 'suspended') {
+                this.context.resume();
+            }
+
             // Create master gain node for volume control
             this.masterGain = this.context.createGain();
             this.masterGain.gain.value = this.volume;
             this.masterGain.connect(this.context.destination);
 
             this.initialized = true;
-            Utils.log.debug('Audio manager initialized');
 
         } catch (error) {
-            Utils.log.error('Failed to initialize Web Audio API:', error);
+            console.error('Failed to initialize Web Audio API:', error);
             this.enabled = false;
         }
     }
@@ -74,6 +82,9 @@ class AudioManager {
      */
     playKeystroke() {
         if (!this.enabled || !this.initialized) return;
+
+        // Prevent too many concurrent sounds
+        if (this.activeOscillators >= this.maxOscillators) return;
 
         const time = this.context.currentTime;
 
@@ -91,6 +102,12 @@ class AudioManager {
         gainNode.gain.setValueAtTime(0.3, time);
         gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.02);
 
+        // Track oscillator count
+        this.activeOscillators++;
+        oscillator.onended = () => {
+            this.activeOscillators--;
+        };
+
         // Play sound
         oscillator.start(time);
         oscillator.stop(time + 0.02);
@@ -101,6 +118,9 @@ class AudioManager {
      */
     playLaser() {
         if (!this.enabled || !this.initialized) return;
+
+        // Prevent too many concurrent sounds
+        if (this.activeOscillators >= this.maxOscillators) return;
 
         const time = this.context.currentTime;
 
@@ -128,6 +148,12 @@ class AudioManager {
         gainNode.gain.setValueAtTime(0, time);
         gainNode.gain.linearRampToValueAtTime(0.5, time + 0.01);
         gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+
+        // Track oscillator count
+        this.activeOscillators++;
+        oscillator.onended = () => {
+            this.activeOscillators--;
+        };
 
         // Play sound
         oscillator.start(time);

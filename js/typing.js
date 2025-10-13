@@ -551,8 +551,10 @@ class TypingLevel {
                 // Create laser that will track the moving word
                 this.createLaser(word, i, charWidth);
 
-                // Play laser sound for each beam
-                window.AudioManager.playLaser();
+                // Only play sound for first laser to prevent audio overload
+                if (i === 0) {
+                    window.AudioManager.playLaser();
+                }
             }, i * 30); // 30ms delay between each laser
         }
 
