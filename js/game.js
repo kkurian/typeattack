@@ -59,16 +59,31 @@ class TypeAttackGame {
         });
 
         // Handle mobile devices - hide button, show message
-        if (this.isMobileDevice()) {
+        const isMobile = this.isMobileDevice();
+        console.log('=== MOBILE DETECTION DEBUG ===');
+        console.log('User Agent:', navigator.userAgent);
+        console.log('Platform:', navigator.platform);
+        console.log('maxTouchPoints:', navigator.maxTouchPoints);
+        console.log('Is Mobile?', isMobile);
+
+        if (isMobile) {
+            console.log('Mobile detected - hiding button, showing message');
             const startBtn = document.getElementById('start-button');
             const mobileMsg = document.getElementById('mobile-message');
 
+            console.log('Start button found?', !!startBtn);
+            console.log('Mobile message found?', !!mobileMsg);
+
             if (startBtn) {
                 startBtn.style.display = 'none';
+                console.log('Button hidden');
             }
             if (mobileMsg) {
                 mobileMsg.style.display = 'block';
+                console.log('Message shown');
             }
+        } else {
+            console.log('Desktop detected - normal behavior');
         }
 
         // Start attract mode on the start screen
@@ -201,22 +216,14 @@ class TypeAttackGame {
     }
 
     /**
-     * Detect if device is mobile
-     * Research-based detection method
+     * Detect if device is mobile - simple aggressive check
      * @returns {boolean}
      */
     isMobileDevice() {
-        // iOS detection (handles iPhone, iPad, iPod including iPadOS 13+)
-        const isIOS = (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) &&
-                      !window.MSStream;
-
-        // Android and other mobile devices
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        const isOtherMobile = /webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-        // Return true if any mobile platform detected
-        return isIOS || isAndroid || isOtherMobile;
+        // Simple check: if device has touch and no mouse, it's mobile
+        return (('ontouchstart' in window) ||
+                (navigator.maxTouchPoints > 0) ||
+                /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
     }
 
     /**
