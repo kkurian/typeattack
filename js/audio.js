@@ -28,6 +28,9 @@ class AudioManager {
 
         // Initialize on first user interaction
         this.setupUserInteraction();
+
+        // Handle visibility changes (for sleep/wake recovery)
+        this.setupVisibilityHandler();
     }
 
     /**
@@ -46,6 +49,52 @@ class AudioManager {
 
         document.addEventListener('click', initAudio);
         document.addEventListener('keydown', initAudio);
+    }
+
+    /**
+     * Setup visibility handler for sleep/wake recovery
+     */
+    setupVisibilityHandler() {
+        document.addEventListener('visibilitychange', async () => {
+            if (!document.hidden && this.context) {
+                // Page became visible (e.g., after computer wake)
+                console.log('Page visible, audio context state:', this.context.state);
+
+                if (this.context.state === 'interrupted' || this.context.state === 'suspended') {
+                    try {
+                        // Try to resume the context
+                        await this.context.resume();
+                        console.log('Audio context resumed, new state:', this.context.state);
+
+                        // If still not running, try to reinitialize
+                        if (this.context.state !== 'running') {
+                            console.log('Audio context still not running, reinitializing...');
+                            this.destroy();
+                            this.initialized = false;
+                            this.init();
+                        }
+                    } catch (error) {
+                        console.error('Failed to recover audio context:', error);
+                        // Try complete reinit as last resort
+                        this.destroy();
+                        this.initialized = false;
+                        this.init();
+                    }
+                }
+            }
+        });
+
+        // Also handle page focus events
+        window.addEventListener('focus', async () => {
+            if (this.context && this.context.state === 'suspended') {
+                try {
+                    await this.context.resume();
+                    console.log('Audio context resumed on focus');
+                } catch (error) {
+                    console.error('Failed to resume audio on focus:', error);
+                }
+            }
+        });
     }
 
     /**
@@ -536,9 +585,15 @@ class AudioManager {
      */
     destroy() {
         if (this.context) {
-            this.context.close();
+            try {
+                this.context.close();
+            } catch (error) {
+                console.error('Error closing audio context:', error);
+            }
             this.context = null;
+            this.masterGain = null;
         }
+        this.activeOscillators = 0;
         this.initialized = false;
     }
 }
