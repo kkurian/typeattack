@@ -13,10 +13,10 @@ The future of programming: Start multiple AI assistants working on different cod
 
 Three skills make this possible:
 1. **Touch typing** — Type without looking at the keyboard. As fast as you think.
-2. **Keyboard-driven workflows** — Use keyboard shortcuts instead of clicking with a mouse. Way faster.
-3. **Persistent sessions** — Keep your AIs running even when you disconnect. When you reconnect, have everything exactly where you left it.
+2. **Keyboard-driven workflows** — Use keyboard shortcuts to navigate between AIs.
+3. **Persistent sessions** — Keep your AIs running even when you disconnect for awhile.
 
-These tools have names (vim, tmux, mosh) but forget that. What matters is building the muscle memory. Like riding a bike—impossible until it clicks, then automatic forever.
+Those skills are for using tools thst have names (vim, tmux, mosh) but forget that. What matters is building the muscle memory. Like riding a bike—impossible until it clicks, then automatic forever.
 
 There is no talent. There is only practice. Welcome to the dojo.
 
