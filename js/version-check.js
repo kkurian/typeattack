@@ -18,29 +18,36 @@ class VersionChecker {
      * Initialize version tracking
      */
     async initVersion() {
-        // In a real app, this would fetch from a version endpoint or manifest
-        // For now, we'll use a timestamp-based version
-        this.currentVersion = this.getVersionHash();
+        try {
+            // Fetch initial version info from the page headers
+            const response = await fetch(window.location.href, {
+                method: 'HEAD',
+                cache: 'no-cache'
+            });
 
-        // Store in session storage for comparison
-        if (!sessionStorage.getItem('typeattack_version')) {
-            sessionStorage.setItem('typeattack_version', this.currentVersion);
+            const lastModified = response.headers.get('last-modified');
+            const etag = response.headers.get('etag');
+            this.currentVersion = `${lastModified}-${etag}`;
+
+            // Store in session storage for comparison
+            if (!sessionStorage.getItem('typeattack_version')) {
+                sessionStorage.setItem('typeattack_version', this.currentVersion);
+            }
+
+            Utils.log.debug(`Version initialized: ${this.currentVersion}`);
+        } catch (error) {
+            Utils.log.warn('Could not initialize version:', error);
+            // Fall back to a static version
+            this.currentVersion = 'v1.0.0';
+            if (!sessionStorage.getItem('typeattack_version')) {
+                sessionStorage.setItem('typeattack_version', this.currentVersion);
+            }
         }
 
         // Start checking for updates
         this.startChecking();
-
-        Utils.log.debug(`Version initialized: ${this.currentVersion}`);
     }
 
-    /**
-     * Generate a version hash (in production, this would come from build process)
-     */
-    getVersionHash() {
-        // For demo purposes, using a timestamp
-        // In production, this would be a build hash or version number
-        return 'v1.0.' + Date.now().toString(36);
-    }
 
     /**
      * Start periodic version checking

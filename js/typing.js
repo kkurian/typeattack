@@ -113,6 +113,24 @@ class TypingLevel {
         this.reset();
         this.startTime = Date.now();
 
+        // Restore saved stage from player progress
+        if (this.game.state.playerProgress.typingStage !== undefined) {
+            this.currentStage = this.game.state.playerProgress.typingStage;
+
+            // Adjust spawn rate and speed for the restored stage
+            const isLetterStage = this.currentStage < 10;
+            if (isLetterStage) {
+                this.currentSpeed = this.baseSpeed * (1 + this.currentStage * 0.05);
+                this.baseSpawnInterval = Math.max(1.0, 2.0 - this.currentStage * 0.15);
+                this.minSpawnInterval = Math.max(0.5, 0.8 - this.currentStage * 0.08);
+            } else {
+                this.currentSpeed = this.baseSpeed * (1 + (this.currentStage - 10) * 0.1);
+                this.baseSpawnInterval = Math.max(1.5, 2.0 - (this.currentStage - 10) * 0.08);
+                this.minSpawnInterval = Math.max(0.8, 1.0 - (this.currentStage - 10) * 0.05);
+            }
+            this.spawnInterval = this.baseSpawnInterval;
+        }
+
         // Setup keyboard input
         this.keyHandler = (data) => this.handleKeyInput(data);
         this.game.keyboard.on('keydown', this.keyHandler);
@@ -129,8 +147,8 @@ class TypingLevel {
         }, 7200);
 
         // Initialize stage description
-        this.currentStageDescription = this.stages[0].description;
-        this.showStageNotification(this.stages[0].description, true, 1); // true = intro, 1 = stage number
+        this.currentStageDescription = this.stages[this.currentStage].description;
+        this.showStageNotification(this.stages[this.currentStage].description, true, this.currentStage + 1); // true = intro
 
         // Disable spawning during stage notification
         this.spawningEnabled = false;
@@ -758,6 +776,10 @@ class TypingLevel {
                 this.currentStage++;
                 this.wordsInCurrentStage = 0;
 
+                // Save the current stage to player progress
+                this.game.state.playerProgress.typingStage = this.currentStage;
+                this.game.saveProgress();
+
                 // For single letter stages, keep speed slower
                 const isLetterStage = this.currentStage < 10; // First 10 stages are single letters
 
@@ -830,7 +852,10 @@ class TypingLevel {
 
             // Calculate current WPM
             const timeMinutes = (Date.now() - this.startTime) / 60000;
-            if (timeMinutes > 0) {
+
+            // Only update proficiency if player has been playing for at least 5 seconds
+            // and has typed some characters - this prevents resetting saved progress
+            if (timeMinutes > (5 / 60) && this.charactersTyped > 0) {
                 const currentWPM = Math.round((this.charactersTyped / 5) / timeMinutes);
                 this.wpmHistory.push(currentWPM);
 
@@ -853,7 +878,12 @@ class TypingLevel {
 
                 // Calculate proficiency percentage
                 const proficiency = Math.min(100, (currentWPM / this.targetWPM) * 80);
-                this.game.updateProficiency('typing', proficiency);
+
+                // Only update if new proficiency is higher than current (don't regress)
+                const currentProficiency = this.game.state.playerProgress.typingProficiency;
+                if (proficiency > currentProficiency) {
+                    this.game.updateProficiency('typing', proficiency);
+                }
             }
         }
     }

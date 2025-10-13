@@ -51,6 +51,13 @@ class TypeAttackGame {
         // Setup keyboard pause handler (only for pause button, not gameplay)
         this.setupControlHandlers();
 
+        // Save progress before page unload
+        window.addEventListener('beforeunload', () => {
+            if (this.state.playerProgress) {
+                this.saveProgress();
+            }
+        });
+
         // Start attract mode on the start screen
         this.attractMode = new AttractMode('game-canvas');
         this.attractMode.start();
@@ -66,6 +73,18 @@ class TypeAttackGame {
 
         if (savedState && savedState.playerProgress) {
             this.state.playerProgress = savedState.playerProgress;
+
+            // Migration: Add stage tracking if it doesn't exist
+            if (this.state.playerProgress.typingStage === undefined) {
+                this.state.playerProgress.typingStage = 0;
+            }
+            if (this.state.playerProgress.vimStage === undefined) {
+                this.state.playerProgress.vimStage = 0;
+            }
+            if (this.state.playerProgress.tmuxStage === undefined) {
+                this.state.playerProgress.tmuxStage = 0;
+            }
+
             Utils.log.info('Progress loaded from save');
         } else {
             // Create new player progress
@@ -85,6 +104,11 @@ class TypeAttackGame {
                 vimUnlocked: false,     // Requires 80% typing
                 tmuxUnlocked: false,    // Requires 80% vim
 
+                // Current stage within each level
+                typingStage: 0,
+                vimStage: 0,
+                tmuxStage: 0,
+
                 // Statistics
                 totalSessions: 0,
                 totalChallenges: 0,
@@ -102,6 +126,9 @@ class TypeAttackGame {
 
         // Apply settings
         this.applySettings();
+
+        // Update progress display to show loaded proficiency
+        this.updateProgressDisplay();
     }
 
     /**
@@ -461,6 +488,9 @@ class TypeAttackGame {
             typingUnlocked: true,
             vimUnlocked: false,
             tmuxUnlocked: false,
+            typingStage: 0,
+            vimStage: 0,
+            tmuxStage: 0,
             totalSessions: 0,
             totalChallenges: 0,
             recentChallenges: [],

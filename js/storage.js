@@ -63,7 +63,6 @@ class StorageManager {
 
             localStorage.setItem(this.STORAGE_KEY, serialized);
             this.quotaExceeded = false;
-            Utils.log.debug('Game saved successfully');
             return true;
 
         } catch (e) {
@@ -89,7 +88,6 @@ class StorageManager {
         try {
             const serialized = localStorage.getItem(this.STORAGE_KEY);
             if (!serialized) {
-                Utils.log.info('No save data found');
                 return null;
             }
 
@@ -97,12 +95,10 @@ class StorageManager {
 
             // Version check
             if (saveData.version !== this.STORAGE_VERSION) {
-                Utils.log.info(`Save version mismatch: ${saveData.version} vs ${this.STORAGE_VERSION}`);
                 // Attempt migration if needed
                 return this.migrate(saveData);
             }
 
-            Utils.log.debug('Game loaded successfully');
             return saveData.gameState;
 
         } catch (e) {
@@ -124,10 +120,8 @@ class StorageManager {
 
         try {
             localStorage.removeItem(this.STORAGE_KEY);
-            Utils.log.info('Save data deleted');
             return true;
         } catch (e) {
-            Utils.log.error('Failed to delete save:', e);
             return false;
         }
     }
@@ -151,15 +145,10 @@ class StorageManager {
 
         // Set up new auto-save interval (30 seconds)
         this.autoSaveInterval = setInterval(() => {
-            if (window.game && window.game.getState) {
-                const state = window.game.getState();
-                if (state) {
-                    this.save(state);
-                }
+            if (window.game && window.game.saveProgress) {
+                window.game.saveProgress();
             }
         }, 30000); // 30 seconds
-
-        Utils.log.debug('Auto-save started (30s interval)');
     }
 
     /**
@@ -169,7 +158,6 @@ class StorageManager {
         if (this.autoSaveInterval) {
             clearInterval(this.autoSaveInterval);
             this.autoSaveInterval = null;
-            Utils.log.debug('Auto-save stopped');
         }
     }
 
@@ -215,16 +203,13 @@ class StorageManager {
     migrate(oldSaveData) {
         try {
             // Handle migration based on version
-            const oldVersion = oldSaveData.version || '0.0.0';
             let gameState = oldSaveData.gameState || oldSaveData;
 
             // Add migration logic for different versions here
             // For now, just return the game state as-is
-            Utils.log.info(`Migrated save from version ${oldVersion} to ${this.STORAGE_VERSION}`);
             return gameState;
 
         } catch (e) {
-            Utils.log.error('Migration failed:', e);
             return null;
         }
     }
@@ -239,10 +224,9 @@ class StorageManager {
                 const backupKey = `${this.STORAGE_KEY}_backup_${Date.now()}`;
                 localStorage.setItem(backupKey, corrupted);
                 localStorage.removeItem(this.STORAGE_KEY);
-                Utils.log.info('Corrupted save backed up to', backupKey);
             }
         } catch (e) {
-            Utils.log.error('Failed to backup corrupted save:', e);
+            // Silently fail
         }
     }
 
@@ -253,20 +237,14 @@ class StorageManager {
         try {
             const keys = Object.keys(localStorage);
             const backupPattern = new RegExp(`^${this.STORAGE_KEY}_backup_`);
-            let cleared = 0;
 
             keys.forEach(key => {
                 if (backupPattern.test(key)) {
                     localStorage.removeItem(key);
-                    cleared++;
                 }
             });
-
-            if (cleared > 0) {
-                Utils.log.info(`Cleared ${cleared} old backup(s) to free space`);
-            }
         } catch (e) {
-            Utils.log.error('Failed to clear old data:', e);
+            // Silently fail
         }
     }
 
@@ -302,7 +280,6 @@ class StorageManager {
                 quotaExceeded: this.quotaExceeded
             };
         } catch (e) {
-            Utils.log.error('Failed to get storage info:', e);
             return {
                 available: false,
                 error: e.message
@@ -332,7 +309,6 @@ class StorageManager {
             const gameState = JSON.parse(jsonString);
             return this.save(gameState);
         } catch (e) {
-            Utils.log.error('Failed to import save:', e);
             return false;
         }
     }
