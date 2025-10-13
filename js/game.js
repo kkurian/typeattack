@@ -58,6 +58,15 @@ class TypeAttackGame {
             }
         });
 
+        // Update start button text on mobile devices
+        if (this.isMobileDevice()) {
+            const startBtn = document.getElementById('start-button');
+            if (startBtn) {
+                startBtn.textContent = 'KEYBOARD REQUIRED';
+                startBtn.style.cursor = 'not-allowed';
+            }
+        }
+
         // Start attract mode on the start screen
         this.attractMode = new AttractMode('game-canvas');
         this.attractMode.start();
@@ -152,7 +161,13 @@ class TypeAttackGame {
         // Start button
         const startBtn = document.getElementById('start-button');
         if (startBtn) {
-            startBtn.addEventListener('click', () => this.start());
+            startBtn.addEventListener('click', () => {
+                if (this.isMobileDevice()) {
+                    this.showMobileWarning();
+                } else {
+                    this.start();
+                }
+            });
         }
 
         // Pause button
@@ -185,6 +200,46 @@ class TypeAttackGame {
     setupControlHandlers() {
         // No keyboard shortcuts for game control to avoid interference with gameplay
         // All controls are mouse/click based
+    }
+
+    /**
+     * Detect if device is mobile
+     * @returns {boolean}
+     */
+    isMobileDevice() {
+        // Check for touch support and small screen
+        const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const isSmallScreen = window.innerWidth <= 768;
+
+        // Check user agent for mobile devices
+        const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+        const isMobileUA = mobileRegex.test(navigator.userAgent);
+
+        return (hasTouch && isSmallScreen) || isMobileUA;
+    }
+
+    /**
+     * Show mobile device warning
+     */
+    showMobileWarning() {
+        const startBtn = document.getElementById('start-button');
+        if (startBtn) {
+            // Store original text
+            const originalText = startBtn.textContent;
+
+            // Change button text to show warning
+            startBtn.textContent = 'KEYBOARD REQUIRED';
+            startBtn.style.backgroundColor = '#ff6b6b';
+
+            // Show alert with more details
+            setTimeout(() => {
+                alert('TypeAttack requires a physical keyboard.\n\nPlease play on a desktop or laptop computer.');
+
+                // Reset button after alert
+                startBtn.textContent = originalText;
+                startBtn.style.backgroundColor = '';
+            }, 100);
+        }
     }
 
     /**
