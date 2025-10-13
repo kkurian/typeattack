@@ -59,13 +59,17 @@ class TypeAttackGame {
         });
 
         // Update start button text on mobile devices
-        if (this.isMobileDevice()) {
-            const startBtn = document.getElementById('start-button');
-            if (startBtn) {
-                startBtn.textContent = 'KEYBOARD REQUIRED';
-                startBtn.style.cursor = 'not-allowed';
+        // Use setTimeout to ensure DOM is fully ready
+        setTimeout(() => {
+            if (this.isMobileDevice()) {
+                const startBtn = document.getElementById('start-button');
+                if (startBtn) {
+                    startBtn.textContent = 'KEYBOARD REQUIRED';
+                    startBtn.style.cursor = 'not-allowed';
+                    startBtn.style.opacity = '0.6';
+                }
             }
-        }
+        }, 0);
 
         // Start attract mode on the start screen
         this.attractMode = new AttractMode('game-canvas');
@@ -207,39 +211,29 @@ class TypeAttackGame {
      * @returns {boolean}
      */
     isMobileDevice() {
-        // Check for touch support and small screen
-        const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-        const isSmallScreen = window.innerWidth <= 768;
-
-        // Check user agent for mobile devices
+        // Check user agent for mobile devices (most reliable)
         const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
         const isMobileUA = mobileRegex.test(navigator.userAgent);
 
-        return (hasTouch && isSmallScreen) || isMobileUA;
+        // Check for touch support
+        const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        // Check screen size
+        const isSmallScreen = window.innerWidth <= 768;
+
+        // Also check for lack of physical keyboard
+        const noPhysicalKeyboard = hasTouch && !window.matchMedia('(pointer: fine)').matches;
+
+        // If any strong indicator of mobile, return true
+        return isMobileUA || noPhysicalKeyboard || (hasTouch && isSmallScreen);
     }
 
     /**
      * Show mobile device warning
      */
     showMobileWarning() {
-        const startBtn = document.getElementById('start-button');
-        if (startBtn) {
-            // Store original text
-            const originalText = startBtn.textContent;
-
-            // Change button text to show warning
-            startBtn.textContent = 'KEYBOARD REQUIRED';
-            startBtn.style.backgroundColor = '#ff6b6b';
-
-            // Show alert with more details
-            setTimeout(() => {
-                alert('TypeAttack requires a physical keyboard.\n\nPlease play on a desktop or laptop computer.');
-
-                // Reset button after alert
-                startBtn.textContent = originalText;
-                startBtn.style.backgroundColor = '';
-            }, 100);
-        }
+        // Immediately show alert
+        alert('🎮 KEYBOARD REQUIRED\n\nTypeAttack requires a physical keyboard to play.\n\nPlease use a desktop or laptop computer.\n\nSorry for the inconvenience!');
     }
 
     /**
