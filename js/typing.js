@@ -86,6 +86,7 @@ class TypingLevel {
         // Visual effects
         this.lasers = [];
         this.explosions = [];
+        this.pendingLaserTimers = []; // Track setTimeout IDs for cleanup
 
         // Vertical positioning lanes
         this.lanes = [0.3, 0.4, 0.5, 0.6, 0.7]; // Percentage of screen height
@@ -187,6 +188,9 @@ class TypingLevel {
      * Reset level state
      */
     reset() {
+        // Clear any pending timers before resetting
+        this.clearAllTimers();
+
         this.words = [];
         this.activeWordIndex = -1;
         this.typedText = '';
@@ -224,6 +228,9 @@ class TypingLevel {
 
         // Reset spawning flag
         this.spawningEnabled = true;
+
+        // Reset timer tracking
+        this.pendingLaserTimers = [];
     }
 
     /**
@@ -545,9 +552,12 @@ class TypingLevel {
         const charWidth = renderer.ctx.measureText('M').width;
         renderer.ctx.restore();
 
+        // Track timers for this word's lasers
+        const wordLaserTimers = [];
+
         for (let i = 0; i < word.text.length; i++) {
             // Stagger the lasers slightly for a cooler effect
-            setTimeout(() => {
+            const timerId = setTimeout(() => {
                 // Create laser that will track the moving word
                 this.createLaser(word, i, charWidth);
 
@@ -555,8 +565,27 @@ class TypingLevel {
                 if (i === 0) {
                     window.AudioManager.playLaser();
                 }
+
+                // Remove this timer from the word's timer list
+                const idx = wordLaserTimers.indexOf(timerId);
+                if (idx !== -1) {
+                    wordLaserTimers.splice(idx, 1);
+                }
+
+                // Also remove from pending timers
+                const globalIdx = this.pendingLaserTimers.indexOf(timerId);
+                if (globalIdx !== -1) {
+                    this.pendingLaserTimers.splice(globalIdx, 1);
+                }
             }, i * 30); // 30ms delay between each laser
+
+            // Track the timer
+            wordLaserTimers.push(timerId);
+            this.pendingLaserTimers.push(timerId);
         }
+
+        // Store timers on the word so we can clean them up if word is removed early
+        word.laserTimers = wordLaserTimers;
 
         // Check difficulty progression
         this.updateDifficulty();
@@ -573,6 +602,19 @@ class TypingLevel {
         // Clear typed text if this was the active word
         if (word.isActive) {
             this.typedText = '';
+        }
+
+        // Clear any pending laser timers for this word
+        if (word.laserTimers && word.laserTimers.length > 0) {
+            word.laserTimers.forEach(timerId => {
+                clearTimeout(timerId);
+                // Remove from global pending timers
+                const idx = this.pendingLaserTimers.indexOf(timerId);
+                if (idx !== -1) {
+                    this.pendingLaserTimers.splice(idx, 1);
+                }
+            });
+            word.laserTimers = [];
         }
 
         // Track missed words for adaptive difficulty
@@ -1292,9 +1334,37 @@ class TypingLevel {
     }
 
     /**
+     * Clear all pending timers
+     */
+    clearAllTimers() {
+        // Clear all pending laser timers
+        if (this.pendingLaserTimers && this.pendingLaserTimers.length > 0) {
+            this.pendingLaserTimers.forEach(timerId => {
+                clearTimeout(timerId);
+            });
+            this.pendingLaserTimers = [];
+        }
+
+        // Clear any timers attached to words
+        if (this.words) {
+            this.words.forEach(word => {
+                if (word.laserTimers && word.laserTimers.length > 0) {
+                    word.laserTimers.forEach(timerId => {
+                        clearTimeout(timerId);
+                    });
+                    word.laserTimers = [];
+                }
+            });
+        }
+    }
+
+    /**
      * Cleanup
      */
     destroy() {
+        // Clear all timers before destroying
+        this.clearAllTimers();
+
         if (this.keyHandler) {
             this.game.keyboard.off('keydown', this.keyHandler);
         }
