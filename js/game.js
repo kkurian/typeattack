@@ -8,7 +8,6 @@ class TypeAttackGame {
         // Game state
         this.state = {
             currentLevel: null,
-            isPaused: false,
             isStarted: false,
             playerProgress: null
         };
@@ -48,7 +47,7 @@ class TypeAttackGame {
         // Setup UI event handlers
         this.setupUI();
 
-        // Setup keyboard pause handler (only for pause button, not gameplay)
+        // Setup control handlers (reserved for future use)
         this.setupControlHandlers();
 
         // Save progress before page unload
@@ -181,12 +180,6 @@ class TypeAttackGame {
         const startBtn = document.getElementById('start-button');
         if (startBtn) {
             startBtn.addEventListener('click', () => this.start());
-        }
-
-        // Pause button
-        const pauseBtn = document.getElementById('pause-button');
-        if (pauseBtn) {
-            pauseBtn.addEventListener('click', () => this.togglePause());
         }
 
         // Reset button
@@ -386,8 +379,6 @@ class TypeAttackGame {
      * @param {number} deltaTime - Time since last update in seconds
      */
     update(deltaTime) {
-        if (this.state.isPaused) return;
-
         // Update current level
         if (this.currentLevelInstance && this.currentLevelInstance.update) {
             this.currentLevelInstance.update(deltaTime);
@@ -415,51 +406,6 @@ class TypeAttackGame {
     }
 
     /**
-     * Toggle pause state
-     */
-    togglePause() {
-        // Check the actual game loop state, not our local state
-        // This handles cases where the game was auto-paused
-        if (this.gameLoop && this.gameLoop.isPaused) {
-            this.resume();
-        } else {
-            this.pause();
-        }
-    }
-
-    /**
-     * Pause the game
-     */
-    pause() {
-        this.state.isPaused = true;
-        this.gameLoop.pause();
-
-        // Update pause button
-        const pauseBtn = document.getElementById('pause-button');
-        if (pauseBtn) {
-            pauseBtn.textContent = 'RESUME';
-        }
-
-        Utils.log.debug('Game paused');
-    }
-
-    /**
-     * Resume the game
-     */
-    resume() {
-        this.state.isPaused = false;
-        this.gameLoop.resume();
-
-        // Update pause button
-        const pauseBtn = document.getElementById('pause-button');
-        if (pauseBtn) {
-            pauseBtn.textContent = 'PAUSE';
-        }
-
-        Utils.log.debug('Game resumed');
-    }
-
-    /**
      * Restart current level
      */
     restartLevel() {
@@ -484,11 +430,6 @@ class TypeAttackGame {
      * Show reset confirmation modal
      */
     showResetModal() {
-        // Pause the game if it's running
-        if (!this.state.isPaused) {
-            this.pause();
-        }
-
         const modal = document.getElementById('reset-modal');
         if (modal) {
             modal.style.display = 'flex';
@@ -656,8 +597,7 @@ class TypeAttackGame {
     getState() {
         return {
             playerProgress: this.state.playerProgress,
-            currentLevel: this.state.currentLevel,
-            isPaused: this.state.isPaused
+            currentLevel: this.state.currentLevel
         };
     }
 
