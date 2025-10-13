@@ -208,24 +208,21 @@ class TypeAttackGame {
 
     /**
      * Detect if device is mobile
+     * Research-based detection method
      * @returns {boolean}
      */
     isMobileDevice() {
-        // Check user agent for mobile devices (most reliable)
-        const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
-        const isMobileUA = mobileRegex.test(navigator.userAgent);
+        // iOS detection (handles iPhone, iPad, iPod including iPadOS 13+)
+        const isIOS = (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) &&
+                      !window.MSStream;
 
-        // Check for touch support
-        const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        // Android and other mobile devices
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isOtherMobile = /webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        // Check screen size
-        const isSmallScreen = window.innerWidth <= 768;
-
-        // Also check for lack of physical keyboard
-        const noPhysicalKeyboard = hasTouch && !window.matchMedia('(pointer: fine)').matches;
-
-        // If any strong indicator of mobile, return true
-        return isMobileUA || noPhysicalKeyboard || (hasTouch && isSmallScreen);
+        // Return true if any mobile platform detected
+        return isIOS || isAndroid || isOtherMobile;
     }
 
     /**
