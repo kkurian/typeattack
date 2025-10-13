@@ -1277,7 +1277,7 @@ class TypingLevel {
             renderer.setAlpha(this.instructionOpacity);
 
             // Draw instruction text
-            const text = "Type the moving letters";
+            const text = "Type the yellow moving letters";
             const textY = 140;
 
             // Responsive sizing
