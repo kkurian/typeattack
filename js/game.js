@@ -18,6 +18,7 @@ class TypeAttackGame {
         this.keyboard = null;
         this.renderer = null;
         this.currentLevelInstance = null;
+        this.attractMode = null;
 
         // Levels
         this.levels = {
@@ -36,10 +37,10 @@ class TypeAttackGame {
     async init() {
         Utils.log.info('Initializing TypeAttack...');
 
-        // Initialize systems
+        // Initialize systems (but NOT renderer yet - it conflicts with attract mode)
         this.gameLoop = new GameLoop();
         this.keyboard = new KeyboardHandler();
-        this.renderer = new Renderer('game-canvas');
+        this.renderer = null; // Will be initialized when game starts
 
         // Load saved progress
         this.loadProgress();
@@ -49,6 +50,10 @@ class TypeAttackGame {
 
         // Setup keyboard pause handler (only for pause button, not gameplay)
         this.setupControlHandlers();
+
+        // Start attract mode on the start screen
+        this.attractMode = new AttractMode('game-canvas');
+        this.attractMode.start();
 
         Utils.log.info('TypeAttack initialized');
     }
@@ -128,6 +133,23 @@ class TypeAttackGame {
         if (pauseBtn) {
             pauseBtn.addEventListener('click', () => this.togglePause());
         }
+
+        // Reset button
+        const resetBtn = document.getElementById('reset-button');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => this.showResetModal());
+        }
+
+        // Reset modal handlers
+        const resetConfirm = document.getElementById('reset-confirm');
+        if (resetConfirm) {
+            resetConfirm.addEventListener('click', () => this.resetProgress());
+        }
+
+        const resetCancel = document.getElementById('reset-cancel');
+        if (resetCancel) {
+            resetCancel.addEventListener('click', () => this.hideResetModal());
+        }
     }
 
     /**
@@ -146,15 +168,29 @@ class TypeAttackGame {
 
         Utils.log.info('Starting game');
 
+        // Stop attract mode
+        if (this.attractMode) {
+            this.attractMode.stop();
+            this.attractMode = null; // Clean up
+        }
+
+        // Initialize renderer now that we're starting the game
+        this.renderer = new Renderer('game-canvas');
+
         // Hide start screen
         const startScreen = document.getElementById('start-screen');
         if (startScreen) {
             startScreen.classList.add('hidden');
         }
 
-        // Show game controls
+        // Show top bar and game controls
+        const topBar = document.getElementById('top-bar');
+        if (topBar) {
+            topBar.style.display = 'flex';
+        }
+
         document.querySelectorAll('.control-button').forEach(btn => {
-            btn.style.display = 'block';
+            btn.style.display = 'inline-block';
         });
 
         // Start with typing level
@@ -194,14 +230,14 @@ class TypeAttackGame {
             this.currentLevelInstance = null;
         }
 
-        // Hide all level containers
-        document.getElementById('game-canvas').style.display = 'none';
+        // Hide vim and tmux containers (but keep canvas visible for typing level)
         document.getElementById('vim-editor').style.display = 'none';
         document.getElementById('tmux-panes').style.display = 'none';
 
         // Load new level
         switch (levelName) {
             case 'typing':
+                // Canvas is always visible for typing level
                 document.getElementById('game-canvas').style.display = 'block';
                 if (!this.levels.typing) {
                     this.levels.typing = new TypingLevel(this);
@@ -300,6 +336,9 @@ class TypeAttackGame {
      * @param {number} interpolation - Interpolation factor for smooth rendering
      */
     render(interpolation) {
+        // Only render if renderer exists (after game has started)
+        if (!this.renderer) return;
+
         // Clear canvas
         this.renderer.clear();
 
@@ -313,7 +352,9 @@ class TypeAttackGame {
      * Toggle pause state
      */
     togglePause() {
-        if (this.state.isPaused) {
+        // Check the actual game loop state, not our local state
+        // This handles cases where the game was auto-paused
+        if (this.gameLoop && this.gameLoop.isPaused) {
             this.resume();
         } else {
             this.pause();
@@ -371,6 +412,70 @@ class TypeAttackGame {
             this.saveProgress();
             location.reload();
         }
+    }
+
+    /**
+     * Show reset confirmation modal
+     */
+    showResetModal() {
+        // Pause the game if it's running
+        if (!this.state.isPaused) {
+            this.pause();
+        }
+
+        const modal = document.getElementById('reset-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+    /**
+     * Hide reset confirmation modal
+     */
+    hideResetModal() {
+        const modal = document.getElementById('reset-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    /**
+     * Reset all progress
+     */
+    resetProgress() {
+        // Clear saved data
+        window.StorageManager.clear();
+
+        // Clear instruction flags
+        localStorage.removeItem('typeattack_has_played');
+
+        // Create fresh progress
+        this.state.playerProgress = {
+            id: Utils.generateId(),
+            createdAt: Date.now(),
+            lastPlayed: Date.now(),
+            totalPlayTime: 0,
+            typingProficiency: 0,
+            vimProficiency: 0,
+            tmuxProficiency: 0,
+            typingUnlocked: true,
+            vimUnlocked: false,
+            tmuxUnlocked: false,
+            totalSessions: 0,
+            totalChallenges: 0,
+            recentChallenges: [],
+            settings: {
+                soundEnabled: true,
+                soundVolume: 0.5,
+                showFPS: false
+            }
+        };
+
+        // Hide modal
+        this.hideResetModal();
+
+        // Reload to start fresh
+        location.reload();
     }
 
     /**
@@ -502,6 +607,9 @@ class TypeAttackGame {
         }
         if (this.currentLevelInstance) {
             this.currentLevelInstance.destroy();
+        }
+        if (this.attractMode) {
+            this.attractMode.stop();
         }
 
         // Stop auto-save

@@ -36,6 +36,10 @@ body {
     display: block;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
 }
 
 /* UI Overlay */
@@ -58,7 +62,7 @@ body {
     height: 60px;
     background: rgba(0, 0, 0, 0.9);
     border-bottom: 1px solid #0f0;
-    display: flex;
+    display: none; /* Hidden by default, shown when game starts */
     align-items: center;
     justify-content: space-between;
     padding: 0 20px;
@@ -90,11 +94,12 @@ body {
     color: #000;
 }
 
-/* Level Progress - Center */
+/* Level Progress - Right side */
 #level-progress {
     display: flex;
     gap: 30px;
     align-items: center;
+    margin-left: auto;  /* Push to the right */
 }
 
 .level-indicator {
@@ -128,6 +133,44 @@ body {
     background: #0f0;
     width: 0%;
     transition: width 0.3s ease;
+}
+
+.coming-soon {
+    font-size: 10px;
+    color: #999;
+    letter-spacing: 1px;
+    margin-top: 2px;
+    font-weight: bold;
+}
+
+/* Stage Chevrons (Trophy/Star emojis) - Centered in top bar */
+#stage-chevrons {
+    display: flex;
+    gap: 2px;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
+    line-height: 1;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 50%;
+    margin-top: -8px;  /* Half of font size to vertically center */
+}
+
+.stage-trophy,
+.stage-star {
+    display: inline-block;
+    animation: trophy-appear 0.3s ease-out;
+}
+
+@keyframes trophy-appear {
+    from {
+        transform: scale(0);
+    }
+    to {
+        transform: scale(1);
+    }
 }
 
 /* Stats Display - Right */
@@ -315,12 +358,13 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: #000;
+    background: rgba(0, 0, 0, 0.7);  /* More transparent to show attract mode better */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    backdrop-filter: blur(1px);  /* Reduced blur to see attract mode better */
 }
 
 #start-screen h2 {
@@ -328,6 +372,10 @@ body {
     margin: 20px 0;
     font-size: 24px;
     text-align: center;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-shadow: 0 0 10px #0f0;
 }
 
 #title-art {
@@ -335,6 +383,10 @@ body {
     font-size: 12px;
     line-height: 1.2;
     margin-bottom: 20px;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 20px;
+    border-radius: 10px;
+    text-shadow: 0 0 5px #0f0;
 }
 
 .game-button {
@@ -456,6 +508,165 @@ body {
     background: rgba(255, 0, 0, 0.2);
 }
 
+/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #000;
+    border: 2px solid #0f0;
+    padding: 40px;
+    text-align: center;
+    max-width: 400px;
+}
+
+.modal-content h2 {
+    color: #ff0;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.modal-content p {
+    color: #0f0;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.modal-content .warning-text {
+    color: #ff0000;
+    font-weight: bold;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.modal-button {
+    background: #000;
+    color: #0f0;
+    border: 2px solid #0f0;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-family: 'Courier New', Courier, monospace;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+}
+
+.modal-button:hover {
+    background: #0f0;
+    color: #000;
+}
+
+.modal-button.danger {
+    border-color: #ff0000;
+    color: #ff0000;
+}
+
+.modal-button.danger:hover {
+    background: #ff0000;
+    color: #000;
+}
+
+/* Tutorial Overlay */
+.tutorial-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 900;
+}
+
+.tutorial-content {
+    background: #000;
+    border: 2px solid #0f0;
+    padding: 40px;
+    max-width: 500px;
+    text-align: center;
+}
+
+.tutorial-content h3 {
+    color: #0f0;
+    font-size: 24px;
+    margin-bottom: 30px;
+    letter-spacing: 2px;
+}
+
+.tutorial-steps {
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+.tutorial-step {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.step-number {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    background: #0f0;
+    color: #000;
+    text-align: center;
+    line-height: 30px;
+    font-weight: bold;
+    margin-right: 15px;
+    border-radius: 50%;
+}
+
+.step-text {
+    color: #0f0;
+    font-size: 16px;
+    flex: 1;
+}
+
+.tutorial-goal {
+    color: #ff0;
+    font-size: 14px;
+    margin: 20px 0;
+    padding: 10px;
+    border: 1px solid #ff0;
+}
+
+.tutorial-button {
+    background: #000;
+    color: #0f0;
+    border: 2px solid #0f0;
+    padding: 12px 30px;
+    font-size: 16px;
+    font-family: 'Courier New', Courier, monospace;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    letter-spacing: 2px;
+}
+
+.tutorial-button:hover {
+    background: #0f0;
+    color: #000;
+    box-shadow: 0 0 20px #0f0;
+}
+
 /* Help Screen */
 .help-overlay {
     position: fixed;
@@ -507,6 +718,57 @@ body {
     100% {
         transform: translate(-50%, -50%) scale(1);
     }
+}
+
+/* Update Notification */
+.update-notification {
+    position: fixed;
+    bottom: -60px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #444;
+    padding: 10px 15px;
+    z-index: 2000;
+    transition: bottom 0.3s ease;
+    font-size: 12px;
+}
+
+.update-notification.show {
+    bottom: 20px;
+}
+
+.update-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.update-icon {
+    color: #666;
+    font-size: 14px;
+}
+
+.update-text {
+    color: #888;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.update-button {
+    background: transparent;
+    border: 1px solid #444;
+    color: #666;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-family: 'Courier New', Courier, monospace;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+}
+
+.update-button:hover {
+    border-color: #666;
+    color: #888;
 }
 
 /* Responsive adjustments for smaller screens */

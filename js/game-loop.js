@@ -106,6 +106,13 @@ class GameLoop {
 
         this.isPaused = true;
         this.showPauseIndicator(true);
+
+        // Update pause button text
+        const pauseBtn = document.getElementById('pause-button');
+        if (pauseBtn) {
+            pauseBtn.textContent = 'RESUME';
+        }
+
         Utils.log.debug('Game paused');
     }
 
@@ -120,6 +127,12 @@ class GameLoop {
         this.lastTime = performance.now(); // Reset time to prevent huge delta
         this.accumulator = 0;
         this.showPauseIndicator(false);
+
+        // Update pause button text
+        const pauseBtn = document.getElementById('pause-button');
+        if (pauseBtn) {
+            pauseBtn.textContent = 'PAUSE';
+        }
 
         Utils.log.debug('Game resumed');
         requestAnimationFrame(this.loop);

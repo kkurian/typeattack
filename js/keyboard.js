@@ -10,12 +10,8 @@ class KeyboardHandler {
         this.currentKey = null;
         this.keysPressed = new Set();
 
-        // Error cooldown system (FR-038)
+        // Error tracking (no cooldown)
         this.consecutiveErrors = 0;
-        this.maxConsecutiveErrors = 3;
-        this.cooldownTime = 1000; // 1 second cooldown
-        this.isCooldown = false;
-        this.cooldownTimeout = null;
 
         // Keyboard layout detection
         this.keyboardLayout = 'QWERTY'; // Default assumption
@@ -85,8 +81,8 @@ class KeyboardHandler {
      * @param {KeyboardEvent} event
      */
     handleKeyDown(event) {
-        // Don't process if disabled or in cooldown
-        if (!this.enabled || this.isCooldown) {
+        // Don't process if disabled
+        if (!this.enabled) {
             return;
         }
 
@@ -149,19 +145,14 @@ class KeyboardHandler {
     }
 
     /**
-     * Register incorrect keystroke for cooldown tracking
+     * Register incorrect keystroke
      */
     registerError() {
         this.consecutiveErrors++;
 
-        if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
-            this.startCooldown();
-        }
-
         // Dispatch error event
         this.dispatch('error', {
-            count: this.consecutiveErrors,
-            inCooldown: this.isCooldown
+            count: this.consecutiveErrors
         });
     }
 
@@ -176,48 +167,6 @@ class KeyboardHandler {
         this.dispatch('correct', {});
     }
 
-    /**
-     * Start cooldown period after too many errors
-     */
-    startCooldown() {
-        this.isCooldown = true;
-
-        // Show cooldown indicator
-        this.showCooldownWarning(true);
-
-        // Clear any existing timeout
-        if (this.cooldownTimeout) {
-            clearTimeout(this.cooldownTimeout);
-        }
-
-        // Set cooldown timer
-        this.cooldownTimeout = setTimeout(() => {
-            this.isCooldown = false;
-            this.consecutiveErrors = 0;
-            this.showCooldownWarning(false);
-
-            Utils.log.debug('Keyboard cooldown ended');
-        }, this.cooldownTime);
-
-        Utils.log.debug('Keyboard cooldown started (1 second)');
-
-        // Dispatch cooldown event
-        this.dispatch('cooldown', {
-            duration: this.cooldownTime
-        });
-    }
-
-    /**
-     * Show or hide cooldown warning
-     * @param {boolean} show
-     */
-    showCooldownWarning(show) {
-        // Could display a visual indicator of cooldown
-        // For now, just log it
-        if (show) {
-            console.warn('Too many errors! Input disabled for 1 second.');
-        }
-    }
 
     /**
      * Detect keyboard layout using the Keyboard API
@@ -351,11 +300,6 @@ class KeyboardHandler {
      */
     resetErrors() {
         this.consecutiveErrors = 0;
-        this.isCooldown = false;
-        if (this.cooldownTimeout) {
-            clearTimeout(this.cooldownTimeout);
-            this.cooldownTimeout = null;
-        }
     }
 
     /**
@@ -366,9 +310,6 @@ class KeyboardHandler {
         document.removeEventListener('keyup', this.handleKeyUp);
         this.listeners.clear();
         this.keysPressed.clear();
-        if (this.cooldownTimeout) {
-            clearTimeout(this.cooldownTimeout);
-        }
     }
 }
 

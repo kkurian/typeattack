@@ -4,9 +4,31 @@
  */
 
 const WordCorpus = {
+    // Keyboard zones for systematic learning
+    keyboardZones: {
+        // Home row - left hand
+        homeLeft: ['a', 's', 'd', 'f'],
+        // Home row - right hand
+        homeRight: ['j', 'k', 'l', ';'],
+        // Index finger extensions
+        indexExtensions: ['g', 'h'],
+        // Upper row - left hand
+        upperLeft: ['q', 'w', 'e', 'r', 't'],
+        // Upper row - right hand
+        upperRight: ['y', 'u', 'i', 'o', 'p'],
+        // Bottom row - left hand
+        bottomLeft: ['z', 'x', 'c', 'v'],
+        // Bottom row - right hand
+        bottomRight: ['n', 'm', ',', '.'],
+        // Center column
+        centerColumn: ['b'],
+        // Numbers
+        numbers: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
+    },
+
     // Home row letters only (asdf jkl;)
     homeKeys: {
-        letters: ['a', 's', 'd', 'f', 'j', 'k', 'l'],
+        letters: ['a', 's', 'd', 'f', 'j', 'k', 'l', ';'],
 
         twoLetter: [
             'as', 'ad', 'la', 'ka', 'fa', 'sa'
@@ -107,8 +129,28 @@ const WordCorpus = {
         ]
     },
 
+    // Get letters for specific keyboard zone
+    getZoneLetters(zoneName) {
+        return this.keyboardZones[zoneName] || [];
+    },
+
+    // Get combined letters from multiple zones
+    getCombinedZones(zoneNames) {
+        let combined = [];
+        for (const zone of zoneNames) {
+            combined = combined.concat(this.getZoneLetters(zone));
+        }
+        return combined;
+    },
+
     // Get words for specific difficulty level
     getWords(difficulty, keySet = 'homeKeys') {
+        // Handle new zone-based progression
+        if (keySet.startsWith('zone:')) {
+            const zones = keySet.substring(5).split(',');
+            return this.getCombinedZones(zones);
+        }
+
         switch(keySet) {
             case 'homeKeys':
                 switch(difficulty) {

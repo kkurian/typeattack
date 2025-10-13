@@ -27,7 +27,7 @@ There is no talent. There is only practice. Welcome to the dojo.
 
 ## Play online
 
-**[https://kkurian.github.io/typeattack/](https://kkurian.github.io/typeattack/)** *(launching soon)*
+**[https://kkurian.github.io/typeattack/](https://kkurian.github.io/typeattack/)**
 
 ## Play offline
 
@@ -54,3 +54,5 @@ AGPL-3.0
 ---
 
 *To those who wrote Type Attack for Apple ][ (1982), thank you for inspiring this kid back then.*
+
+*For my daughter, Annette.*

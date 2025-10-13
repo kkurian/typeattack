@@ -133,6 +133,14 @@ class StorageManager {
     }
 
     /**
+     * Clear all save data (alias for deleteSave)
+     * @returns {boolean} Whether clear was successful
+     */
+    clear() {
+        return this.deleteSave();
+    }
+
+    /**
      * Start auto-save timer (30 second interval)
      */
     startAutoSave() {

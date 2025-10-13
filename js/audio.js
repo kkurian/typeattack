@@ -249,6 +249,169 @@ class AudioManager {
     }
 
     /**
+     * Play special introductory fanfare for game start
+     */
+    playIntroFanfare() {
+        if (!this.enabled || !this.initialized) return;
+
+        const time = this.context.currentTime;
+
+        // Play a much longer, more elaborate fanfare for game introduction
+        const notes = [
+            // Opening flourish (ascending arpeggio)
+            { freq: 130.81, start: 0, duration: 0.2 },       // C3
+            { freq: 164.81, start: 0.15, duration: 0.2 },    // E3
+            { freq: 196, start: 0.3, duration: 0.2 },        // G3
+            { freq: 261.63, start: 0.45, duration: 0.25 },   // C4
+
+            // First phrase
+            { freq: 261.63, start: 0.8, duration: 0.3 },     // C4
+            { freq: 329.63, start: 1.05, duration: 0.25 },   // E4
+            { freq: 392, start: 1.25, duration: 0.25 },      // G4
+            { freq: 523.25, start: 1.45, duration: 0.3 },    // C5
+
+            // Second phrase (response)
+            { freq: 440, start: 1.9, duration: 0.25 },       // A4
+            { freq: 392, start: 2.1, duration: 0.25 },       // G4
+            { freq: 349.23, start: 2.3, duration: 0.25 },    // F4
+            { freq: 329.63, start: 2.5, duration: 0.3 },     // E4
+
+            // Bridge
+            { freq: 293.66, start: 2.9, duration: 0.2 },     // D4
+            { freq: 329.63, start: 3.05, duration: 0.2 },    // E4
+            { freq: 349.23, start: 3.2, duration: 0.2 },     // F4
+            { freq: 392, start: 3.35, duration: 0.25 },      // G4
+
+            // Grand finale
+            { freq: 523.25, start: 3.7, duration: 0.2 },     // C5
+            { freq: 659.25, start: 3.85, duration: 0.2 },    // E5
+            { freq: 783.99, start: 4.0, duration: 0.25 },    // G5
+            { freq: 1046.5, start: 4.2, duration: 0.6 },     // C6 (held)
+        ];
+
+        notes.forEach(note => {
+            const oscillator = this.context.createOscillator();
+            const gainNode = this.context.createGain();
+            const filter = this.context.createBiquadFilter();
+
+            oscillator.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(this.masterGain);
+
+            // Configure sound - mix of sine and triangle for richness
+            oscillator.type = note.start < 0.6 ? 'sine' : 'triangle';
+            oscillator.frequency.setValueAtTime(note.freq, time + note.start);
+
+            // Add slight vibrato for warmth on longer notes
+            if (note.duration > 0.2) {
+                const vibrato = this.context.createOscillator();
+                const vibratoGain = this.context.createGain();
+                vibrato.frequency.value = 4;
+                vibratoGain.gain.value = 5;
+                vibrato.connect(vibratoGain);
+                vibratoGain.connect(oscillator.frequency);
+                vibrato.start(time + note.start);
+                vibrato.stop(time + note.start + note.duration);
+            }
+
+            // Filter for warmth
+            filter.type = 'lowpass';
+            filter.frequency.value = 3500;
+            filter.Q.value = 2;
+
+            // Volume envelope - louder for intro
+            gainNode.gain.setValueAtTime(0, time + note.start);
+            gainNode.gain.linearRampToValueAtTime(0.6, time + note.start + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, time + note.start + note.duration);
+
+            // Play sound
+            oscillator.start(time + note.start);
+            oscillator.stop(time + note.start + note.duration);
+        });
+
+        // Add a bass note for depth (extended for longer fanfare)
+        const bass = this.context.createOscillator();
+        const bassGain = this.context.createGain();
+        bass.connect(bassGain);
+        bassGain.connect(this.masterGain);
+
+        bass.type = 'sine';
+        bass.frequency.setValueAtTime(65.41, time); // C2 (lower octave)
+        bassGain.gain.setValueAtTime(0, time);
+        bassGain.gain.linearRampToValueAtTime(0.25, time + 0.2);
+        bassGain.gain.setValueAtTime(0.25, time + 3.5);
+        bassGain.gain.linearRampToValueAtTime(0.35, time + 4.0); // Swell for finale
+        bassGain.gain.exponentialRampToValueAtTime(0.01, time + 4.8);
+
+        bass.start(time);
+        bass.stop(time + 4.8);
+
+        // Add a harmony line for richness
+        const harmony = this.context.createOscillator();
+        const harmonyGain = this.context.createGain();
+        harmony.connect(harmonyGain);
+        harmonyGain.connect(this.masterGain);
+
+        harmony.type = 'triangle';
+        harmony.frequency.setValueAtTime(196, time + 1.9); // G3
+        harmony.frequency.setValueAtTime(174.61, time + 2.5); // F3
+        harmony.frequency.setValueAtTime(196, time + 3.7); // G3
+
+        harmonyGain.gain.setValueAtTime(0, time + 1.9);
+        harmonyGain.gain.linearRampToValueAtTime(0.2, time + 2.0);
+        harmonyGain.gain.setValueAtTime(0.2, time + 4.0);
+        harmonyGain.gain.exponentialRampToValueAtTime(0.01, time + 4.5);
+
+        harmony.start(time + 1.9);
+        harmony.stop(time + 4.5);
+    }
+
+    /**
+     * Play stage advancement fanfare
+     */
+    playStageAdvance() {
+        if (!this.enabled || !this.initialized) return;
+
+        const time = this.context.currentTime;
+
+        // Play a short ascending fanfare
+        const notes = [
+            { freq: 440, start: 0, duration: 0.15 },      // A
+            { freq: 554.37, start: 0.1, duration: 0.15 }, // C#
+            { freq: 659.25, start: 0.2, duration: 0.2 },  // E
+            { freq: 880, start: 0.35, duration: 0.25 }    // A (octave)
+        ];
+
+        notes.forEach(note => {
+            const oscillator = this.context.createOscillator();
+            const gainNode = this.context.createGain();
+            const filter = this.context.createBiquadFilter();
+
+            oscillator.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(this.masterGain);
+
+            // Configure sound
+            oscillator.type = 'triangle'; // Softer than sine
+            oscillator.frequency.setValueAtTime(note.freq, time + note.start);
+
+            // Filter for warmth
+            filter.type = 'lowpass';
+            filter.frequency.value = 3000;
+            filter.Q.value = 2;
+
+            // Volume envelope
+            gainNode.gain.setValueAtTime(0, time + note.start);
+            gainNode.gain.linearRampToValueAtTime(0.5, time + note.start + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, time + note.start + note.duration);
+
+            // Play sound
+            oscillator.start(time + note.start);
+            oscillator.stop(time + note.start + note.duration);
+        });
+    }
+
+    /**
      * Play explosion sound (for word destruction)
      */
     playExplosion() {
