@@ -1,12 +1,11 @@
 /**
  * TypeAttack - Game Loop Engine
- * Fixed timestep update with variable rendering and auto-pause
+ * Fixed timestep update with variable rendering
  */
 
 class GameLoop {
     constructor() {
         this.isRunning = false;
-        this.isPaused = false;
 
         // Timing configuration
         this.targetFPS = 60;
@@ -26,45 +25,6 @@ class GameLoop {
 
         // Bind methods
         this.loop = this.loop.bind(this);
-        this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
-
-        // Setup page visibility handling for auto-pause
-        this.setupVisibilityHandling();
-    }
-
-    /**
-     * Setup page visibility API for auto-pause
-     */
-    setupVisibilityHandling() {
-        document.addEventListener('visibilitychange', this.handleVisibilityChange);
-        window.addEventListener('blur', () => this.handleFocusChange(false));
-        window.addEventListener('focus', () => this.handleFocusChange(true));
-    }
-
-    /**
-     * Handle page visibility changes
-     */
-    handleVisibilityChange() {
-        if (document.hidden && this.isRunning && !this.isPaused) {
-            this.pause();
-            this.wasAutoPaused = true;
-            Utils.log.debug('Game auto-paused due to tab visibility');
-        } else if (!document.hidden && this.wasAutoPaused) {
-            // Don't auto-resume - let user manually resume
-            Utils.log.debug('Tab visible again, waiting for user to resume');
-        }
-    }
-
-    /**
-     * Handle window focus changes
-     * @param {boolean} hasFocus - Whether window has focus
-     */
-    handleFocusChange(hasFocus) {
-        if (!hasFocus && this.isRunning && !this.isPaused) {
-            this.pause();
-            this.wasAutoPaused = true;
-            Utils.log.debug('Game auto-paused due to window blur');
-        }
     }
 
     /**
@@ -81,7 +41,6 @@ class GameLoop {
         this.updateCallback = updateCallback;
         this.renderCallback = renderCallback;
         this.isRunning = true;
-        this.isPaused = false;
         this.lastTime = performance.now();
         this.accumulator = 0;
 
@@ -94,59 +53,7 @@ class GameLoop {
      */
     stop() {
         this.isRunning = false;
-        this.isPaused = false;
         Utils.log.info('Game loop stopped');
-    }
-
-    /**
-     * Pause the game loop
-     */
-    pause() {
-        if (!this.isRunning) return;
-
-        this.isPaused = true;
-        this.showPauseIndicator(true);
-
-        // Update pause button text
-        const pauseBtn = document.getElementById('pause-button');
-        if (pauseBtn) {
-            pauseBtn.textContent = 'RESUME';
-        }
-
-        Utils.log.debug('Game paused');
-    }
-
-    /**
-     * Resume the game loop
-     */
-    resume() {
-        if (!this.isRunning) return;
-
-        this.isPaused = false;
-        this.wasAutoPaused = false;
-        this.lastTime = performance.now(); // Reset time to prevent huge delta
-        this.accumulator = 0;
-        this.showPauseIndicator(false);
-
-        // Update pause button text
-        const pauseBtn = document.getElementById('pause-button');
-        if (pauseBtn) {
-            pauseBtn.textContent = 'PAUSE';
-        }
-
-        Utils.log.debug('Game resumed');
-        requestAnimationFrame(this.loop);
-    }
-
-    /**
-     * Toggle pause state
-     */
-    togglePause() {
-        if (this.isPaused) {
-            this.resume();
-        } else {
-            this.pause();
-        }
     }
 
     /**
@@ -155,7 +62,6 @@ class GameLoop {
      */
     loop(currentTime) {
         if (!this.isRunning) return;
-        if (this.isPaused) return;
 
         // Calculate delta time and cap it
         const deltaTime = Math.min(currentTime - this.lastTime, this.maxFrameTime);
@@ -224,17 +130,6 @@ class GameLoop {
     }
 
     /**
-     * Show or hide pause indicator
-     * @param {boolean} show - Whether to show the indicator
-     */
-    showPauseIndicator(show) {
-        const indicator = document.getElementById('pause-indicator');
-        if (indicator) {
-            indicator.style.display = show ? 'block' : 'none';
-        }
-    }
-
-    /**
      * Get current FPS
      * @returns {number} Current FPS
      */
@@ -251,7 +146,6 @@ class GameLoop {
             fps: this.currentFPS,
             targetFPS: this.targetFPS,
             isRunning: this.isRunning,
-            isPaused: this.isPaused,
             frameTime: this.targetFrameTime
         };
     }
@@ -282,9 +176,6 @@ class GameLoop {
      */
     destroy() {
         this.stop();
-        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
-        window.removeEventListener('blur', () => this.handleFocusChange(false));
-        window.removeEventListener('focus', () => this.handleFocusChange(true));
     }
 }
 

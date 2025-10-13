@@ -217,12 +217,6 @@ body {
     text-align: center;
 }
 
-#pause-indicator {
-    font-size: 24px;
-    color: #ff0;
-    animation: blink 1s infinite;
-}
-
 #storage-warning {
     display: block;
     margin-top: 10px;
@@ -452,11 +446,6 @@ body {
 }
 
 /* Animations */
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-}
-
 @keyframes cursor-blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
