@@ -16,7 +16,7 @@ Three skills make this possible:
 2. **Keyboard-driven workflows** — Use keyboard shortcuts to navigate between AIs.
 3. **Persistent sessions** — Keep your AIs running even when you disconnect for awhile.
 
-The real developer tools you'll master have names (vim, tmux, mosh) but forget that. What matters is building the muscle memory. Like riding a bike—impossible until it clicks, then automatic forever.
+By playing, you will master real software development tools (vim, tmux, mosh) but forget that. What matters is building the muscle memory. Like riding a bike—impossible until it clicks, then automatic forever.
 
 There is no talent. There is only practice. Welcome to the dojo.
 
