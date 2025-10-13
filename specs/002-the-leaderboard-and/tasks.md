@@ -28,7 +28,7 @@
 - [ ] T001 [P] Create directory structure: `js/`, `workers/`, `scripts/`, `data/`, `data/replays/`
 - [ ] T002 [P] Initialize `data/leaderboard.json` with empty schema (version 1, empty scores array)
 - [ ] T003 [P] Initialize `data/feedback.json` with empty schema (version 1, empty items array)
-- [ ] T004 [P] Create `.github/workflows/process-leaderboard-queue.yml` workflow file with placeholder job and TODO notes
+- [ ] T004 [P] Create `.github/workflows/process-leaderboard-queue.yml` workflow file skeleton
 
 ---
 
@@ -52,11 +52,10 @@
 
 ### Processing Infrastructure
 
-- [ ] T011 Flesh out workflow in `.github/workflows/process-leaderboard-queue.yml` (define cron schedule, Python setup, secrets usage)
+- [ ] T011 Create base GitHub Actions workflow in `.github/workflows/process-leaderboard-queue.yml` (cron schedule, Python setup)
 - [ ] T012 Implement Cloudflare KV API client in `scripts/cloudflare_kv.py` (fetch queue items, delete items, no external deps)
 - [ ] T013 Implement hash validation in `scripts/validate_session.py` (recalculate SHA-256, verify match)
 - [ ] T014 Implement JSON generation utilities in `scripts/generate_static.py` (atomic file writes, schema validation)
-- [ ] T093 Implement moderation tooling in `scripts/moderate_scores.py` (list flagged scores, support manual deletion workflow)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -75,7 +74,6 @@
 - [ ] T015 [P] [US1] Implement score submission UI in `js/score-submission.js` (initials prompt, submit button, success/error messages)
 - [ ] T016 [P] [US1] Integrate session recorder with game completion in `js/typing.js` (hook into game end, compile session data)
 - [ ] T017 [US1] Implement score submission flow in `js/score-submission.js` (check/create UID, calculate hash, POST to API, handle responses)
-- [ ] T091 [US1] Enforce 3-letter uppercase initials in `js/score-submission.js` (prevent invalid input before POST)
 
 #### Cloudflare Worker - Score Endpoint
 
@@ -84,7 +82,6 @@
 - [ ] T020 [US1] Implement duplicate detection in `/api/submit-score` (check KV for existing sessionHash)
 - [ ] T021 [US1] Implement rate limiting in `/api/submit-score` (check `ratelimit:score:{userId}`, enforce 60s limit)
 - [ ] T022 [US1] Implement queue storage in `/api/submit-score` (write to KV with key `queue:{timestamp}:{uuid}`)
-- [ ] T092 [US1] Validate initials length and characters in `/api/submit-score` (reject non 3-letter uppercase values)
 
 #### GitHub Actions - Queue Processing
 
@@ -285,7 +282,6 @@
 - [ ] T088 Run end-to-end validation per `specs/002-the-leaderboard-and/quickstart.md` (all test flows)
 - [ ] T089 Code cleanup and refactoring (remove console.logs, add comments, consistent formatting)
 - [ ] T090 Create deployment documentation in `specs/002-the-leaderboard-and/deployment.md` (production setup steps)
-- [ ] T094 Document score moderation workflow in `specs/002-the-leaderboard-and/quickstart.md` (manual deletion steps for flagged entries)
 
 ---
 
@@ -432,17 +428,17 @@ With multiple developers after Foundational phase completes:
 
 ## Task Count Summary
 
-- **Total Tasks**: 94
+- **Total Tasks**: 90
 - **Setup (Phase 1)**: 4 tasks
-- **Foundational (Phase 2)**: 11 tasks
-- **User Story 1 - Submit High Score (P1)**: 19 tasks
+- **Foundational (Phase 2)**: 10 tasks
+- **User Story 1 - Submit High Score (P1)**: 17 tasks
 - **User Story 6 - View Leaderboard (P1)**: 3 tasks
 - **User Story 2 - Watch Replays (P1)**: 11 tasks
 - **User Story 3 - Vote on Scores (P2)**: 10 tasks
 - **User Story 2 (cont.) - Vote on Replays (P1)**: 3 tasks
 - **User Story 4 - Submit Feedback (P2)**: 13 tasks
 - **User Story 5 - Vote on Feedback (P3)**: 7 tasks
-- **Polish & Cross-Cutting (Phase 10)**: 13 tasks
+- **Polish & Cross-Cutting (Phase 10)**: 12 tasks
 
-**MVP Scope (US1 + US6)**: 37 tasks (Setup + Foundational + US1 + US6)
+**MVP Scope (US1 + US6)**: 34 tasks (Setup + Foundational + US1 + US6)
 **Parallel Opportunities**: 23 tasks marked [P] within their phases
