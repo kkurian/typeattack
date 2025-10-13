@@ -59,15 +59,15 @@ class TypeAttackGame {
         });
 
         // Handle mobile devices - hide button, show message
-        const isMobile = this.isMobileDevice();
-        console.log('=== MOBILE DETECTION DEBUG ===');
+        const hasKeyboard = this.hasPhysicalKeyboard();
+        console.log('=== INPUT CAPABILITY DETECTION DEBUG ===');
         console.log('User Agent:', navigator.userAgent);
         console.log('Platform:', navigator.platform);
         console.log('maxTouchPoints:', navigator.maxTouchPoints);
-        console.log('Is Mobile?', isMobile);
+        console.log('Has Physical Keyboard?', hasKeyboard);
 
-        if (isMobile) {
-            console.log('Mobile detected - hiding button, showing message');
+        if (!hasKeyboard) {
+            console.log('No physical keyboard detected - hiding button, showing message');
             const startBtn = document.getElementById('start-button');
             const mobileMsg = document.getElementById('mobile-message');
 
@@ -83,7 +83,7 @@ class TypeAttackGame {
                 console.log('Message shown');
             }
         } else {
-            console.log('Desktop detected - normal behavior');
+            console.log('Keyboard detected - normal behavior');
         }
 
         // Start attract mode on the start screen
@@ -216,16 +216,69 @@ class TypeAttackGame {
     }
 
     /**
-     * Detect if device is mobile - simple aggressive check
+     * Detect whether a physical keyboard is likely available.
+     * Uses multiple heuristics to avoid false negatives on hybrid devices.
      * @returns {boolean}
      */
-    isMobileDevice() {
-        // Simple check: if device has touch and no mouse, it's mobile
-        return (('ontouchstart' in window) ||
-                (navigator.maxTouchPoints > 0) ||
-                /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
-    }
+    hasPhysicalKeyboard() {
+        const ua = navigator.userAgent || '';
+        const uaData = navigator.userAgentData;
+        const platform = (uaData && uaData.platform) || navigator.platform || '';
 
+        const hasMatchMedia = typeof window.matchMedia === 'function';
+        const pointerFine = hasMatchMedia ? window.matchMedia('(pointer: fine)').matches : false;
+        const hoverCapable = hasMatchMedia ? window.matchMedia('(hover: hover)').matches : false;
+        const pointerCoarse = hasMatchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
+
+        const maxTouchPoints = typeof navigator.maxTouchPoints === 'number' ? navigator.maxTouchPoints : 0;
+        const hasTouch = ('ontouchstart' in window) || maxTouchPoints > 0;
+
+        const desktopPlatforms = ['Win', 'Mac', 'Linux', 'CrOS', 'X11'];
+        const isDesktopPlatform = desktopPlatforms.some(prefix => platform.indexOf(prefix) === 0);
+
+        const phoneRegex = /Android.+Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i;
+        const tabletRegex = /iPad|Android(?!.*Mobile)|Tablet|PlayBook/i;
+
+        if (uaData && typeof uaData.mobile === 'boolean') {
+            if (!uaData.mobile) {
+                return true;
+            }
+
+            if (uaData.mobile && (pointerFine || hoverCapable)) {
+                return true;
+            }
+        }
+
+        if (pointerFine || hoverCapable) {
+            return true;
+        }
+
+        if (isDesktopPlatform) {
+            return true;
+        }
+
+        if (/Mac/i.test(platform) && maxTouchPoints > 1) {
+            return true;
+        }
+
+        if (!hasTouch) {
+            return true;
+        }
+
+        if (tabletRegex.test(ua)) {
+            return true;
+        }
+
+        if (pointerCoarse && phoneRegex.test(ua)) {
+            return false;
+        }
+
+        if (uaData && typeof uaData.mobile === 'boolean' && uaData.mobile && phoneRegex.test(ua)) {
+            return false;
+        }
+
+        return !phoneRegex.test(ua);
+    }
     /**
      * Start the game
      */
