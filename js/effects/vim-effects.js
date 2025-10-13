@@ -1,0 +1,1 @@
+window.VimEffects = class VimEffects {};

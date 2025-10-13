@@ -1,0 +1,1 @@
+window.WordCorpus = class WordCorpus {};

@@ -1,0 +1,1 @@
+window.MissionTracker = class MissionTracker {};

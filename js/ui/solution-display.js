@@ -1,0 +1,1 @@
+window.SolutionDisplay = class SolutionDisplay {};

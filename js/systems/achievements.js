@@ -1,0 +1,1 @@
+window.Achievements = class Achievements {};

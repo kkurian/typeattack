@@ -1,0 +1,1 @@
+window.Tutorial = class Tutorial {};

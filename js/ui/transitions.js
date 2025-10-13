@@ -1,0 +1,1 @@
+window.Transitions = class Transitions {};

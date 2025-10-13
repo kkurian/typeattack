@@ -1,0 +1,1 @@
+window.Replay = class Replay {};

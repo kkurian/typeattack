@@ -1,0 +1,539 @@
+/* TypeAttack Game Styles */
+
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #000;
+    color: #0f0;
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Game Container */
+#game-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Canvas */
+#game-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+/* UI Overlay */
+#ui-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 100;
+}
+
+/* Game Control Buttons */
+#game-controls {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    gap: 10px;
+    pointer-events: auto;
+}
+
+.control-button {
+    background: rgba(0, 0, 0, 0.8);
+    color: #0f0;
+    border: 1px solid #0f0;
+    padding: 8px 15px;
+    font-size: 12px;
+    font-family: 'Courier New', Courier, monospace;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    pointer-events: auto;
+}
+
+.control-button:hover {
+    background: #0f0;
+    color: #000;
+    box-shadow: 0 0 10px #0f0;
+}
+
+/* Progress Bar */
+#progress-bar {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 20px;
+    border: 2px solid #0f0;
+    border-radius: 5px;
+}
+
+.progress-segment {
+    min-width: 120px;
+    text-align: center;
+}
+
+.progress-segment.locked {
+    opacity: 0.5;
+}
+
+.progress-label {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.progress-fill {
+    height: 8px;
+    background: #222;
+    border: 1px solid #0f0;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: #0f0;
+    width: var(--progress, 0%);
+    transition: width 0.3s ease;
+}
+
+.progress-percent {
+    display: block;
+    font-size: 10px;
+    margin-top: 3px;
+}
+
+/* Score Display */
+#score-display {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 15px;
+    border: 2px solid #0f0;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+#score-display > div {
+    margin: 5px 0;
+}
+
+#wpm {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+#accuracy::before {
+    content: 'ACC: ';
+}
+
+#streak::before {
+    content: 'STREAK: ';
+}
+
+/* FPS Counter */
+#fps-counter {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    font-size: 12px;
+    color: #666;
+    font-family: monospace;
+}
+
+/* Game Status */
+#game-status {
+    position: absolute;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+}
+
+#pause-indicator {
+    font-size: 24px;
+    color: #ff0;
+    animation: blink 1s infinite;
+}
+
+#storage-warning {
+    display: block;
+    margin-top: 10px;
+    color: #f00;
+    font-size: 14px;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 5px 10px;
+    border: 1px solid #f00;
+}
+
+/* Vim Editor */
+#vim-editor {
+    width: 100%;
+    height: 100%;
+    background: #1a1a1a;
+    color: #f0f0f0;
+    padding: 20px;
+    font-family: 'Courier New', Courier, monospace;
+    position: relative;
+}
+
+#vim-mode-indicator {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    padding: 5px 10px;
+    background: #333;
+    border: 1px solid #666;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+#vim-content {
+    white-space: pre;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.corruption {
+    background: rgba(255, 0, 0, 0.2);
+    color: #ff6666;
+    animation: corruption-pulse 1s infinite;
+}
+
+#vim-cursor {
+    position: absolute;
+    width: 2px;
+    height: 24px;
+    background: #0f0;
+    animation: cursor-blink 1s infinite;
+}
+
+#vim-cursor.insert-mode {
+    width: 10px;
+    background: #ff0;
+}
+
+#vim-command-line {
+    position: absolute;
+    bottom: 40px;
+    left: 10px;
+    right: 10px;
+    height: 30px;
+    background: #000;
+    border: 1px solid #666;
+    padding: 5px;
+    font-size: 14px;
+    display: none;
+}
+
+#vim-command-line.active {
+    display: block;
+}
+
+/* Tmux Panes */
+#tmux-panes {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    position: relative;
+}
+
+#tmux-status-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 25px;
+    background: #0f0;
+    color: #000;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+#panes-container {
+    width: 100%;
+    height: calc(100% - 25px);
+    display: flex;
+    position: relative;
+}
+
+.tmux-pane {
+    flex: 1;
+    border: 1px solid #0f0;
+    position: relative;
+    overflow: hidden;
+}
+
+.tmux-pane.active {
+    border-color: #ff0;
+    border-width: 2px;
+}
+
+.pane-divider {
+    width: 2px;
+    background: #0f0;
+    cursor: col-resize;
+}
+
+.pane-divider.horizontal {
+    height: 2px;
+    width: 100%;
+    cursor: row-resize;
+}
+
+/* Screen Overlays */
+.screen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+#start-screen h2 {
+    color: #0f0;
+    margin: 20px 0;
+    font-size: 24px;
+    text-align: center;
+}
+
+#title-art {
+    color: #0f0;
+    font-size: 12px;
+    line-height: 1.2;
+    margin-bottom: 20px;
+}
+
+.game-button {
+    background: #000;
+    color: #0f0;
+    border: 2px solid #0f0;
+    padding: 15px 40px;
+    font-size: 18px;
+    font-family: 'Courier New', Courier, monospace;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+
+.game-button:hover {
+    background: #0f0;
+    color: #000;
+    box-shadow: 0 0 20px #0f0;
+}
+
+#instructions {
+    margin-top: 30px;
+    font-size: 14px;
+    color: #666;
+}
+
+/* Settings Panel */
+.settings-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #000;
+    border: 2px solid #0f0;
+    padding: 20px;
+    z-index: 500;
+    min-width: 300px;
+}
+
+.settings-panel h3 {
+    color: #0f0;
+    margin-bottom: 15px;
+}
+
+.setting-row {
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.setting-row label {
+    color: #0f0;
+}
+
+.setting-row input[type="range"] {
+    width: 100px;
+}
+
+.setting-row input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+}
+
+/* Animations */
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+@keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+@keyframes corruption-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes laser-shoot {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100vh);
+        opacity: 0;
+    }
+}
+
+/* Laser Effect */
+.laser {
+    position: absolute;
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(to top, transparent, #0f0, #fff);
+    animation: laser-shoot 0.5s linear;
+}
+
+/* Word Styles (for typing level) */
+.word {
+    position: absolute;
+    font-size: 24px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.word.lead {
+    color: #ff0;
+}
+
+.word .typed {
+    color: #0f0;
+}
+
+.word .error {
+    color: #f00;
+    background: rgba(255, 0, 0, 0.2);
+}
+
+/* Help Screen */
+.help-overlay {
+    position: fixed;
+    top: 10%;
+    left: 10%;
+    right: 10%;
+    bottom: 10%;
+    background: #000;
+    border: 2px solid #0f0;
+    padding: 20px;
+    overflow-y: auto;
+    z-index: 600;
+}
+
+.help-overlay h3 {
+    color: #0f0;
+    margin: 20px 0 10px 0;
+}
+
+.help-overlay kbd {
+    background: #222;
+    border: 1px solid #0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* Achievement Notification */
+.achievement {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #000;
+    border: 3px solid #ff0;
+    padding: 20px;
+    text-align: center;
+    animation: achievement-pop 0.5s ease-out;
+    z-index: 1500;
+}
+
+@keyframes achievement-pop {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.2);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 1024px) {
+    #title-art {
+        font-size: 8px;
+    }
+
+    .progress-segment {
+        min-width: 80px;
+    }
+
+    #score-display {
+        font-size: 12px;
+    }
+}
+
+/* Hide elements initially */
+#start-screen.hidden,
+.settings-panel.hidden,
+.help-overlay.hidden {
+    display: none;
+}

@@ -1,0 +1,1 @@
+window.PaneManager = class PaneManager {};

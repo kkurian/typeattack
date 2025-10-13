@@ -1,0 +1,1 @@
+window.VimParser = class VimParser {};

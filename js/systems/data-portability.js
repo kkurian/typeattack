@@ -1,0 +1,1 @@
+window.DataPortability = class DataPortability {};

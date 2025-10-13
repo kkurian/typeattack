@@ -1,0 +1,1 @@
+window.ChallengeTracker = class ChallengeTracker {};

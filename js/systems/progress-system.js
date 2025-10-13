@@ -1,0 +1,1 @@
+window.ProgressSystem = class ProgressSystem {};

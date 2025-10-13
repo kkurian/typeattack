@@ -1,0 +1,523 @@
+/**
+ * TypeAttack - Main Game Controller
+ * Coordinates all game systems and manages game state
+ */
+
+class TypeAttackGame {
+    constructor() {
+        // Game state
+        this.state = {
+            currentLevel: null,
+            isPaused: false,
+            isStarted: false,
+            playerProgress: null
+        };
+
+        // Game systems
+        this.gameLoop = null;
+        this.keyboard = null;
+        this.renderer = null;
+        this.currentLevelInstance = null;
+
+        // Levels
+        this.levels = {
+            typing: null,
+            vim: null,
+            tmux: null
+        };
+
+        // Initialize
+        this.init();
+    }
+
+    /**
+     * Initialize game systems
+     */
+    async init() {
+        Utils.log.info('Initializing TypeAttack...');
+
+        // Initialize systems
+        this.gameLoop = new GameLoop();
+        this.keyboard = new KeyboardHandler();
+        this.renderer = new Renderer('game-canvas');
+
+        // Load saved progress
+        this.loadProgress();
+
+        // Setup UI event handlers
+        this.setupUI();
+
+        // Setup keyboard pause handler (only for pause button, not gameplay)
+        this.setupControlHandlers();
+
+        Utils.log.info('TypeAttack initialized');
+    }
+
+    /**
+     * Load player progress from storage
+     */
+    loadProgress() {
+        const savedState = window.StorageManager.load();
+
+        if (savedState && savedState.playerProgress) {
+            this.state.playerProgress = savedState.playerProgress;
+            Utils.log.info('Progress loaded from save');
+        } else {
+            // Create new player progress
+            this.state.playerProgress = {
+                id: Utils.generateId(),
+                createdAt: Date.now(),
+                lastPlayed: Date.now(),
+                totalPlayTime: 0,
+
+                // Proficiency scores (0-100)
+                typingProficiency: 0,
+                vimProficiency: 0,
+                tmuxProficiency: 0,
+
+                // Level unlock states
+                typingUnlocked: true,  // Always unlocked
+                vimUnlocked: false,     // Requires 80% typing
+                tmuxUnlocked: false,    // Requires 80% vim
+
+                // Statistics
+                totalSessions: 0,
+                totalChallenges: 0,
+                recentChallenges: [],
+
+                // Settings
+                settings: {
+                    soundEnabled: true,
+                    soundVolume: 0.5,
+                    showFPS: false
+                }
+            };
+            Utils.log.info('Created new player progress');
+        }
+
+        // Apply settings
+        this.applySettings();
+    }
+
+    /**
+     * Apply player settings
+     */
+    applySettings() {
+        const settings = this.state.playerProgress.settings;
+
+        // Apply sound settings
+        window.AudioManager.setEnabled(settings.soundEnabled);
+        window.AudioManager.setVolume(settings.soundVolume);
+
+        // Apply FPS display
+        this.gameLoop.showFPS(settings.showFPS);
+    }
+
+    /**
+     * Setup UI event handlers
+     */
+    setupUI() {
+        // Start button
+        const startBtn = document.getElementById('start-button');
+        if (startBtn) {
+            startBtn.addEventListener('click', () => this.start());
+        }
+
+        // Pause button
+        const pauseBtn = document.getElementById('pause-button');
+        if (pauseBtn) {
+            pauseBtn.addEventListener('click', () => this.togglePause());
+        }
+
+        // Restart button
+        const restartBtn = document.getElementById('restart-button');
+        if (restartBtn) {
+            restartBtn.addEventListener('click', () => this.restartLevel());
+        }
+
+        // Menu button
+        const menuBtn = document.getElementById('menu-button');
+        if (menuBtn) {
+            menuBtn.addEventListener('click', () => this.showMenu());
+        }
+    }
+
+    /**
+     * Setup control handlers
+     */
+    setupControlHandlers() {
+        // No keyboard shortcuts for game control to avoid interference with gameplay
+        // All controls are mouse/click based
+    }
+
+    /**
+     * Start the game
+     */
+    start() {
+        if (this.state.isStarted) return;
+
+        Utils.log.info('Starting game');
+
+        // Hide start screen
+        const startScreen = document.getElementById('start-screen');
+        if (startScreen) {
+            startScreen.classList.add('hidden');
+        }
+
+        // Show game controls
+        document.querySelectorAll('.control-button').forEach(btn => {
+            btn.style.display = 'block';
+        });
+
+        // Start with typing level
+        this.loadLevel('typing');
+
+        // Start game loop
+        this.gameLoop.start(
+            (deltaTime) => this.update(deltaTime),
+            (interpolation) => this.render(interpolation)
+        );
+
+        // Enable keyboard
+        this.keyboard.enable();
+
+        this.state.isStarted = true;
+        this.state.playerProgress.totalSessions++;
+
+        // Save progress
+        this.saveProgress();
+    }
+
+    /**
+     * Load a game level
+     * @param {string} levelName - Name of the level to load
+     */
+    loadLevel(levelName) {
+        // Check if level is unlocked
+        if (!this.isLevelUnlocked(levelName)) {
+            Utils.log.warn(`Level ${levelName} is locked`);
+            this.showLevelLockedMessage(levelName);
+            return;
+        }
+
+        // Cleanup current level
+        if (this.currentLevelInstance) {
+            this.currentLevelInstance.destroy();
+            this.currentLevelInstance = null;
+        }
+
+        // Hide all level containers
+        document.getElementById('game-canvas').style.display = 'none';
+        document.getElementById('vim-editor').style.display = 'none';
+        document.getElementById('tmux-panes').style.display = 'none';
+
+        // Load new level
+        switch (levelName) {
+            case 'typing':
+                document.getElementById('game-canvas').style.display = 'block';
+                if (!this.levels.typing) {
+                    this.levels.typing = new TypingLevel(this);
+                }
+                this.currentLevelInstance = this.levels.typing;
+                break;
+
+            case 'vim':
+                document.getElementById('vim-editor').style.display = 'block';
+                if (!this.levels.vim) {
+                    this.levels.vim = new VimLevel(this);
+                }
+                this.currentLevelInstance = this.levels.vim;
+                break;
+
+            case 'tmux':
+                document.getElementById('tmux-panes').style.display = 'block';
+                if (!this.levels.tmux) {
+                    this.levels.tmux = new TmuxLevel(this);
+                }
+                this.currentLevelInstance = this.levels.tmux;
+                break;
+
+            default:
+                Utils.log.error(`Unknown level: ${levelName}`);
+                return;
+        }
+
+        this.state.currentLevel = levelName;
+
+        if (this.currentLevelInstance) {
+            this.currentLevelInstance.init();
+        }
+
+        this.updateProgressDisplay();
+        Utils.log.info(`Loaded level: ${levelName}`);
+    }
+
+    /**
+     * Check if a level is unlocked
+     * @param {string} levelName
+     * @returns {boolean}
+     */
+    isLevelUnlocked(levelName) {
+        const progress = this.state.playerProgress;
+
+        switch (levelName) {
+            case 'typing':
+                return true; // Always unlocked
+            case 'vim':
+                return progress.typingProficiency >= 80;
+            case 'tmux':
+                return progress.vimProficiency >= 80;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Show level locked message
+     * @param {string} levelName
+     */
+    showLevelLockedMessage(levelName) {
+        let requirement = '';
+
+        switch (levelName) {
+            case 'vim':
+                requirement = 'Achieve 80% proficiency in Typing level';
+                break;
+            case 'tmux':
+                requirement = 'Achieve 80% proficiency in Vim level';
+                break;
+        }
+
+        alert(`Level ${levelName} is locked!\n\nRequirement: ${requirement}`);
+    }
+
+    /**
+     * Update game logic
+     * @param {number} deltaTime - Time since last update in seconds
+     */
+    update(deltaTime) {
+        if (this.state.isPaused) return;
+
+        // Update current level
+        if (this.currentLevelInstance && this.currentLevelInstance.update) {
+            this.currentLevelInstance.update(deltaTime);
+        }
+
+        // Update play time
+        this.state.playerProgress.totalPlayTime += deltaTime;
+    }
+
+    /**
+     * Render the game
+     * @param {number} interpolation - Interpolation factor for smooth rendering
+     */
+    render(interpolation) {
+        // Clear canvas
+        this.renderer.clear();
+
+        // Render current level
+        if (this.currentLevelInstance && this.currentLevelInstance.render) {
+            this.currentLevelInstance.render(this.renderer, interpolation);
+        }
+    }
+
+    /**
+     * Toggle pause state
+     */
+    togglePause() {
+        if (this.state.isPaused) {
+            this.resume();
+        } else {
+            this.pause();
+        }
+    }
+
+    /**
+     * Pause the game
+     */
+    pause() {
+        this.state.isPaused = true;
+        this.gameLoop.pause();
+
+        // Update pause button
+        const pauseBtn = document.getElementById('pause-button');
+        if (pauseBtn) {
+            pauseBtn.textContent = '▶ RESUME';
+        }
+
+        Utils.log.debug('Game paused');
+    }
+
+    /**
+     * Resume the game
+     */
+    resume() {
+        this.state.isPaused = false;
+        this.gameLoop.resume();
+
+        // Update pause button
+        const pauseBtn = document.getElementById('pause-button');
+        if (pauseBtn) {
+            pauseBtn.textContent = '⏸ PAUSE';
+        }
+
+        Utils.log.debug('Game resumed');
+    }
+
+    /**
+     * Restart current level
+     */
+    restartLevel() {
+        if (this.currentLevelInstance && this.currentLevelInstance.restart) {
+            this.currentLevelInstance.restart();
+            Utils.log.info('Level restarted');
+        }
+    }
+
+    /**
+     * Show main menu
+     */
+    showMenu() {
+        // For now, just reload the page to return to start
+        if (confirm('Return to main menu? (Progress will be saved)')) {
+            this.saveProgress();
+            location.reload();
+        }
+    }
+
+    /**
+     * Update proficiency score for a level
+     * @param {string} levelName
+     * @param {number} proficiency - New proficiency score (0-100)
+     */
+    updateProficiency(levelName, proficiency) {
+        const oldProficiency = this.state.playerProgress[`${levelName}Proficiency`];
+        this.state.playerProgress[`${levelName}Proficiency`] = proficiency;
+
+        // Check for level unlocks
+        if (levelName === 'typing' && proficiency >= 80 && !this.state.playerProgress.vimUnlocked) {
+            this.state.playerProgress.vimUnlocked = true;
+            this.showUnlockNotification('Vim');
+        } else if (levelName === 'vim' && proficiency >= 80 && !this.state.playerProgress.tmuxUnlocked) {
+            this.state.playerProgress.tmuxUnlocked = true;
+            this.showUnlockNotification('Tmux');
+        }
+
+        // Update display
+        this.updateProgressDisplay();
+
+        // Save progress
+        this.saveProgress();
+    }
+
+    /**
+     * Show unlock notification
+     * @param {string} levelName
+     */
+    showUnlockNotification(levelName) {
+        Utils.log.info(`Level unlocked: ${levelName}`);
+
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'achievement';
+        notification.innerHTML = `
+            <h2>LEVEL UNLOCKED!</h2>
+            <p>${levelName.toUpperCase()} mode is now available</p>
+        `;
+        document.body.appendChild(notification);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+
+        // Play success sound
+        window.AudioManager.playLevelComplete();
+    }
+
+    /**
+     * Update progress display
+     */
+    updateProgressDisplay() {
+        const progress = this.state.playerProgress;
+
+        // Update typing progress
+        const typingBar = document.getElementById('typing-progress');
+        if (typingBar) {
+            typingBar.querySelector('.progress-fill').style.setProperty('--progress', `${progress.typingProficiency}%`);
+            typingBar.querySelector('.progress-percent').textContent = `${Math.round(progress.typingProficiency)}%`;
+        }
+
+        // Update vim progress
+        const vimBar = document.getElementById('vim-progress');
+        if (vimBar) {
+            if (progress.vimUnlocked) {
+                vimBar.classList.remove('locked');
+                vimBar.querySelector('.progress-fill').style.setProperty('--progress', `${progress.vimProficiency}%`);
+                vimBar.querySelector('.progress-percent').textContent = `${Math.round(progress.vimProficiency)}%`;
+            } else {
+                vimBar.querySelector('.progress-percent').textContent = '🔒';
+            }
+        }
+
+        // Update tmux progress
+        const tmuxBar = document.getElementById('tmux-progress');
+        if (tmuxBar) {
+            if (progress.tmuxUnlocked) {
+                tmuxBar.classList.remove('locked');
+                tmuxBar.querySelector('.progress-fill').style.setProperty('--progress', `${progress.tmuxProficiency}%`);
+                tmuxBar.querySelector('.progress-percent').textContent = `${Math.round(progress.tmuxProficiency)}%`;
+            } else {
+                tmuxBar.querySelector('.progress-percent').textContent = '🔒';
+            }
+        }
+    }
+
+    /**
+     * Save progress to storage
+     */
+    saveProgress() {
+        const saveData = {
+            playerProgress: this.state.playerProgress,
+            timestamp: Date.now()
+        };
+
+        window.StorageManager.save(saveData);
+    }
+
+    /**
+     * Get current game state
+     * @returns {Object}
+     */
+    getState() {
+        return {
+            playerProgress: this.state.playerProgress,
+            currentLevel: this.state.currentLevel,
+            isPaused: this.state.isPaused
+        };
+    }
+
+    /**
+     * Cleanup and destroy
+     */
+    destroy() {
+        if (this.gameLoop) {
+            this.gameLoop.destroy();
+        }
+        if (this.keyboard) {
+            this.keyboard.destroy();
+        }
+        if (this.renderer) {
+            this.renderer.destroy();
+        }
+        if (this.currentLevelInstance) {
+            this.currentLevelInstance.destroy();
+        }
+
+        // Stop auto-save
+        window.StorageManager.stopAutoSave();
+    }
+}
+
+// Make game globally accessible
+window.TypeAttackGame = TypeAttackGame;

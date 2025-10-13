@@ -1,0 +1,1 @@
+window.VimScoring = class VimScoring {};

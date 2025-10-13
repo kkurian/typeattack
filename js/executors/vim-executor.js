@@ -1,0 +1,1 @@
+window.VimExecutor = class VimExecutor {};

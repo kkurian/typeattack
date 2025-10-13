@@ -1,0 +1,1 @@
+window.SettingsPanel = class SettingsPanel {};

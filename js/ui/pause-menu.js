@@ -1,0 +1,1 @@
+window.PauseMenu = class PauseMenu {};

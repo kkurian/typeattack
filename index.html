@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TypeAttack - Type Fast. Type Well. Type to Survive.</title>
+    <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+    <!-- Main Game Container -->
+    <div id="game-container">
+        <!-- Canvas for typing level -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Vim editor DOM element (hidden by default) -->
+        <div id="vim-editor" style="display:none;">
+            <div id="vim-mode-indicator">NORMAL</div>
+            <pre id="vim-content"></pre>
+            <div id="vim-cursor"></div>
+            <div id="vim-command-line"></div>
+        </div>
+
+        <!-- Tmux panes container (hidden by default) -->
+        <div id="tmux-panes" style="display:none;">
+            <div id="tmux-status-bar"></div>
+            <div id="panes-container"></div>
+        </div>
+    </div>
+
+    <!-- UI Overlay -->
+    <div id="ui-overlay">
+        <!-- Game Control Buttons -->
+        <div id="game-controls">
+            <button id="pause-button" class="control-button" style="display:none;">⏸ PAUSE</button>
+            <button id="restart-button" class="control-button" style="display:none;">↻ RESTART</button>
+            <button id="menu-button" class="control-button" style="display:none;">☰ MENU</button>
+        </div>
+
+        <!-- Progress Bar -->
+        <div id="progress-bar">
+            <div id="typing-progress" class="progress-segment">
+                <span class="progress-label">Typing</span>
+                <div class="progress-fill"></div>
+                <span class="progress-percent">0%</span>
+            </div>
+            <div id="vim-progress" class="progress-segment locked">
+                <span class="progress-label">Vim</span>
+                <div class="progress-fill"></div>
+                <span class="progress-percent">🔒</span>
+            </div>
+            <div id="tmux-progress" class="progress-segment locked">
+                <span class="progress-label">Tmux</span>
+                <div class="progress-fill"></div>
+                <span class="progress-percent">🔒</span>
+            </div>
+        </div>
+
+        <!-- Score Display -->
+        <div id="score-display">
+            <div id="wpm">0 WPM</div>
+            <div id="accuracy">100%</div>
+            <div id="streak">0</div>
+        </div>
+
+        <!-- FPS Counter -->
+        <div id="fps-counter" style="display:none;">60 FPS</div>
+
+        <!-- Pause/Settings indicators -->
+        <div id="game-status">
+            <span id="pause-indicator" style="display:none;">PAUSED</span>
+            <span id="storage-warning" style="display:none;">⚠️ Progress not saving</span>
+        </div>
+    </div>
+
+    <!-- Start Screen Overlay -->
+    <div id="start-screen" class="screen-overlay">
+        <pre id="title-art">
+████████╗██╗   ██╗██████╗ ███████╗ █████╗ ████████╗████████╗ █████╗  ██████╗██╗  ██╗
+╚══██╔══╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗╚══██╔══╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
+   ██║    ╚████╔╝ ██████╔╝█████╗  ███████║   ██║      ██║   ███████║██║     █████╔╝
+   ██║     ╚██╔╝  ██╔═══╝ ██╔══╝  ██╔══██║   ██║      ██║   ██╔══██║██║     ██╔═██╗
+   ██║      ██║   ██║     ███████╗██║  ██║   ██║      ██║   ██║  ██║╚██████╗██║  ██╗
+   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
+        </pre>
+        <h2>Type fast. Type well. Type to survive.</h2>
+        <button id="start-button" class="game-button">START GAME</button>
+        <div id="instructions">
+            <p>Click START to begin • Click pause button during game</p>
+        </div>
+    </div>
+
+    <!-- Load all JavaScript modules -->
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/keyboard.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/game-loop.js"></script>
+
+    <!-- Entity modules -->
+    <script src="js/entities/word.js"></script>
+    <script src="js/entities/vim-challenge.js"></script>
+
+    <!-- Generator modules -->
+    <script src="js/generators/word-generator.js"></script>
+    <script src="js/generators/corruption-generator.js"></script>
+
+    <!-- Renderer modules -->
+    <script src="js/renderers/typing-renderer.js"></script>
+
+    <!-- Effect modules -->
+    <script src="js/effects/laser-effect.js"></script>
+    <script src="js/effects/vim-effects.js"></script>
+    <script src="js/effects/polish.js"></script>
+
+    <!-- Calculator modules -->
+    <script src="js/calculators/typing-proficiency.js"></script>
+    <script src="js/calculators/vim-proficiency.js"></script>
+    <script src="js/calculators/vim-scoring.js"></script>
+    <script src="js/calculators/tmux-proficiency.js"></script>
+
+    <!-- Tracker modules -->
+    <script src="js/trackers/challenge-tracker.js"></script>
+    <script src="js/trackers/session-tracker.js"></script>
+    <script src="js/trackers/mission-tracker.js"></script>
+
+    <!-- System modules -->
+    <script src="js/systems/progress-system.js"></script>
+    <script src="js/systems/unlock-system.js"></script>
+    <script src="js/systems/achievements.js"></script>
+    <script src="js/systems/error-recovery.js"></script>
+    <script src="js/systems/data-portability.js"></script>
+    <script src="js/systems/replay.js"></script>
+    <script src="js/systems/statistics.js"></script>
+    <script src="js/systems/tutorial.js"></script>
+    <script src="js/systems/accessibility.js"></script>
+
+    <!-- UI modules -->
+    <script src="js/ui/progress-dashboard.js"></script>
+    <script src="js/ui/settings-panel.js"></script>
+    <script src="js/ui/solution-display.js"></script>
+    <script src="js/ui/start-screen.js"></script>
+    <script src="js/ui/pause-menu.js"></script>
+    <script src="js/ui/transitions.js"></script>
+    <script src="js/ui/help-screen.js"></script>
+
+    <!-- Vim modules -->
+    <script src="js/components/vim-editor.js"></script>
+    <script src="js/parsers/vim-parser.js"></script>
+    <script src="js/executors/vim-executor.js"></script>
+
+    <!-- Tmux modules -->
+    <script src="js/components/tmux-panes.js"></script>
+    <script src="js/handlers/tmux-handler.js"></script>
+    <script src="js/managers/pane-manager.js"></script>
+    <script src="js/stages/tmux-stage-1.js"></script>
+    <script src="js/stages/tmux-stage-2.js"></script>
+    <script src="js/stages/tmux-stage-3.js"></script>
+    <script src="js/stages/tmux-stage-4.js"></script>
+    <script src="js/stages/tmux-stage-5.js"></script>
+    <script src="js/stages/tmux-stage-6.js"></script>
+
+    <!-- Data modules -->
+    <script src="js/data/word-corpus.js"></script>
+
+    <!-- Debug modules -->
+    <script src="js/debug/performance.js"></script>
+
+    <!-- Level implementations -->
+    <script src="js/typing.js"></script>
+    <script src="js/vim.js"></script>
+    <script src="js/tmux.js"></script>
+
+    <!-- Main game controller (loaded last) -->
+    <script src="js/game.js"></script>
+
+    <!-- Initialize game when DOM ready -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.game = new TypeAttackGame();
+            // Game will auto-start when user clicks start button
+        });
+    </script>
+</body>
+</html>

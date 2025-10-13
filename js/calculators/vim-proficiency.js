@@ -1,0 +1,1 @@
+window.VimProficiency = class VimProficiency {};

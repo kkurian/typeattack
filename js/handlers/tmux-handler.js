@@ -1,0 +1,1 @@
+window.TmuxHandler = class TmuxHandler {};

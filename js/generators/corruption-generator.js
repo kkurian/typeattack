@@ -1,0 +1,1 @@
+window.CorruptionGenerator = class CorruptionGenerator {};

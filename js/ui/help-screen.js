@@ -1,0 +1,1 @@
+window.HelpScreen = class HelpScreen {};

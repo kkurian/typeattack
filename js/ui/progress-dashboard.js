@@ -1,0 +1,1 @@
+window.ProgressDashboard = class ProgressDashboard {};

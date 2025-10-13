@@ -1,0 +1,1 @@
+window.Accessibility = class Accessibility {};

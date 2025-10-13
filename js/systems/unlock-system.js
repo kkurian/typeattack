@@ -1,0 +1,1 @@
+window.UnlockSystem = class UnlockSystem {};

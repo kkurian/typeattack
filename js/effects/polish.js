@@ -1,0 +1,1 @@
+window.Polish = class Polish {};

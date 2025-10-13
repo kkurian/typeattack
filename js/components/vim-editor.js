@@ -1,0 +1,1 @@
+window.VimEditor = class VimEditor {};
