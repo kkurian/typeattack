@@ -40,7 +40,7 @@ open index.html
 
 ## How it works
 
-80% proficiency at one level umlocka the next. Your progress saves in your browser.
+80% proficiency at one level unlocks the next. Your progress saves in your browser.
 
 ## License
 
