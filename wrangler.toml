@@ -8,8 +8,8 @@ compatibility_date = "2024-01-01"
 # KV Namespace binding
 [[kv_namespaces]]
 binding = "LEADERBOARD_QUEUE"
-# Replace with your actual KV namespace ID
-id = "YOUR_KV_NAMESPACE_ID"
+# KV namespace ID for typeattack
+id = "8132e4922eb74c0780ae670461cbaf3c"
 
 # Environment variables (optional)
 [vars]
