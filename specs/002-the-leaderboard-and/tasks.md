@@ -25,10 +25,10 @@
 
 **Purpose**: Project initialization and basic structure for all leaderboard components
 
-- [ ] T001 [P] Create directory structure: `js/`, `workers/`, `scripts/`, `data/`, `data/replays/`
-- [ ] T002 [P] Initialize `data/leaderboard.json` with empty schema (version 1, empty scores array)
-- [ ] T003 [P] Initialize `data/feedback.json` with empty schema (version 1, empty items array)
-- [ ] T004 [P] Create `.github/workflows/process-leaderboard-queue.yml` workflow file with placeholder job and TODO notes
+- [X] T001 [P] Create directory structure: `js/`, `workers/`, `scripts/`, `data/`, `data/replays/`
+- [X] T002 [P] Initialize `data/leaderboard.json` with empty schema (version 1, empty scores array)
+- [X] T003 [P] Initialize `data/feedback.json` with empty schema (version 1, empty items array)
+- [X] T004 [P] Create `.github/workflows/process-leaderboard-queue.yml` workflow file with placeholder job and TODO notes
 
 ---
 
@@ -41,22 +41,22 @@
 ### Cloudflare Infrastructure
 
 - [ ] T005 Setup Cloudflare KV namespace `typeattack_leaderboard_queue` (manual: via Cloudflare dashboard)
-- [ ] T006 Create base Cloudflare Worker in `workers/leaderboard-api.js` with CORS, health endpoint, error handling
+- [X] T006 Create base Cloudflare Worker in `workers/leaderboard-api.js` with CORS, health endpoint, error handling
 - [ ] T007 Configure GitHub Secrets: `CF_ACCOUNT_ID`, `CF_API_TOKEN`, `CF_KV_NAMESPACE_ID` (manual: via GitHub settings)
 
 ### Client-Side Foundation
 
-- [ ] T008 [P] Implement user identity system in `js/user-identity.js` (UUID generation, cookie management, localStorage backup)
-- [ ] T009 [P] Implement session hash calculation in `js/session-hash.js` (SHA-256 via Web Crypto API)
-- [ ] T010 [P] Create session recording system in `js/session-recorder.js` (track words, keystrokes, timings during gameplay)
+- [X] T008 [P] Implement user identity system in `js/user-identity.js` (UUID generation, cookie management, localStorage backup)
+- [X] T009 [P] Implement session hash calculation in `js/session-hash.js` (SHA-256 via Web Crypto API)
+- [X] T010 [P] Create session recording system in `js/session-recorder.js` (track words, keystrokes, timings during gameplay)
 
 ### Processing Infrastructure
 
-- [ ] T011 Flesh out workflow in `.github/workflows/process-leaderboard-queue.yml` (define cron schedule, Python setup, secrets usage)
-- [ ] T012 Implement Cloudflare KV API client in `scripts/cloudflare_kv.py` (fetch queue items, delete items, no external deps)
-- [ ] T013 Implement hash validation in `scripts/validate_session.py` (recalculate SHA-256, verify match)
-- [ ] T014 Implement JSON generation utilities in `scripts/generate_static.py` (atomic file writes, schema validation)
-- [ ] T093 Implement moderation tooling in `scripts/moderate_scores.py` (list flagged scores, support manual deletion workflow)
+- [X] T011 Flesh out workflow in `.github/workflows/process-leaderboard-queue.yml` (define cron schedule, Python setup, secrets usage)
+- [X] T012 Implement Cloudflare KV API client in `scripts/cloudflare_kv.py` (fetch queue items, delete items, no external deps)
+- [X] T013 Implement hash validation in `scripts/validate_session.py` (recalculate SHA-256, verify match)
+- [X] T014 Implement JSON generation utilities in `scripts/generate_static.py` (atomic file writes, schema validation)
+- [X] T093 Implement moderation tooling in `scripts/moderate_scores.py` (list flagged scores, support manual deletion workflow)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
