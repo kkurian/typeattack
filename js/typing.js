@@ -488,6 +488,20 @@ class TypingLevel {
      * @param {Object} data - Keyboard event data
      */
     handleKeyInput(data) {
+        // Developer hotkey for testing score submission (only on localhost or dev environments)
+        const isLocalDev = window.location.hostname === 'localhost' ||
+                          window.location.hostname === '127.0.0.1' ||
+                          window.location.protocol === 'file:' ||
+                          window.location.hostname.includes('github.io');
+
+        if (isLocalDev) {
+            if (data.key === '1' && !data.ctrlKey && !data.metaKey && !data.altKey) {
+                // Create mock session data for testing
+                this.triggerTestSubmission();
+                return;
+            }
+        }
+
         // Check for manual score submission (Ctrl/Cmd + S)
         if ((data.ctrlKey || data.metaKey) && data.key === 's') {
             if (this.isLeaderboardWorthy()) {
@@ -863,6 +877,59 @@ class TypingLevel {
                     this.triggerScoreSubmission('manual');
                 }
             };
+        }
+    }
+
+    /**
+     * Trigger test submission with mock data (developer testing only)
+     */
+    triggerTestSubmission() {
+        console.log('Developer mode: Triggering test score submission');
+
+        // Calculate current stats
+        const timeMinutes = Math.max(0.01, (Date.now() - this.startTime) / 60000);
+        const currentWPM = Math.round((this.charactersTyped / 5) / timeMinutes) || 25;
+        const accuracy = this.totalKeystrokes > 0
+            ? Math.round((this.correctKeystrokes / this.totalKeystrokes) * 100)
+            : 95;
+
+        // Create mock session data that looks realistic
+        const mockSessionData = {
+            seed: Date.now(),
+            stage: this.currentStage + 1,
+            startTime: this.startTime,
+            endTime: Date.now(),
+            duration: Date.now() - this.startTime,
+            stats: {
+                wpm: currentWPM,
+                accuracy: accuracy,
+                wordsCompleted: this.wordsCompleted || 10,
+                totalKeystrokes: this.totalKeystrokes || 150,
+                correctKeystrokes: this.correctKeystrokes || 142
+            },
+            words: [
+                { text: 'test', completed: true },
+                { text: 'word', completed: true },
+                { text: 'data', completed: true }
+            ],
+            keystrokes: [
+                { key: 't', timestamp: 100, wordIndex: 0, correct: true },
+                { key: 'e', timestamp: 200, wordIndex: 0, correct: true },
+                { key: 's', timestamp: 300, wordIndex: 0, correct: true },
+                { key: 't', timestamp: 400, wordIndex: 0, correct: true }
+            ],
+            completions: [
+                { wordIndex: 0, timestamp: 500 },
+                { wordIndex: 1, timestamp: 1000 },
+                { wordIndex: 2, timestamp: 1500 }
+            ]
+        };
+
+        // Show submission modal directly with mock data
+        if (typeof scoreSubmission !== 'undefined') {
+            scoreSubmission.showSubmissionModal(mockSessionData);
+        } else {
+            console.error('Score submission module not loaded');
         }
     }
 
