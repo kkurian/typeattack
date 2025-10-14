@@ -121,6 +121,9 @@ class TypingLevel {
             sessionRecorder.startSession(seed);
         }
 
+        // Setup submit score button
+        this.setupSubmitScoreButton();
+
         // Restore saved stage from player progress
         if (this.game.state.playerProgress.typingStage !== undefined) {
             this.currentStage = this.game.state.playerProgress.typingStage;
@@ -485,6 +488,15 @@ class TypingLevel {
      * @param {Object} data - Keyboard event data
      */
     handleKeyInput(data) {
+        // Check for manual score submission (Ctrl/Cmd + S)
+        if ((data.ctrlKey || data.metaKey) && data.key === 's') {
+            if (this.isLeaderboardWorthy()) {
+                this.triggerScoreSubmission('manual');
+                data.preventDefault();
+            }
+            return;
+        }
+
         if (this.activeWordIndex === -1 || this.levelCompleted) return;
 
         const activeWord = this.words[this.activeWordIndex];
@@ -733,6 +745,8 @@ class TypingLevel {
             targetWord: targetWord,
             letterIndex: letterIndex,
             charWidth: charWidth,
+            targetX: initialX,
+            targetY: targetWord.y,
             progress: 0,
             speed: 3, // Progress speed (0 to 1)
             hasHit: false,
@@ -838,6 +852,70 @@ class TypingLevel {
 
 
     /**
+     * Setup submit score button
+     */
+    setupSubmitScoreButton() {
+        const submitButton = document.getElementById('submit-score-button');
+        if (submitButton) {
+            // Add click handler
+            submitButton.onclick = () => {
+                if (this.isLeaderboardWorthy()) {
+                    this.triggerScoreSubmission('manual');
+                }
+            };
+        }
+    }
+
+    /**
+     * Trigger score submission modal
+     * @param {string} trigger - What triggered the submission (e.g., 'stage_complete', 'level_complete', 'high_score')
+     */
+    triggerScoreSubmission(trigger) {
+        // Don't allow submission if one is already in progress
+        if (this.submissionInProgress) return;
+
+        if (typeof sessionRecorder !== 'undefined' && sessionRecorder.isSessionActive()) {
+            this.submissionInProgress = true;
+            const sessionData = sessionRecorder.endSession();
+            if (sessionData && typeof scoreSubmission !== 'undefined') {
+                // Restart recording for continued play
+                const seed = Date.now();
+                sessionRecorder.startSession(seed);
+                this.submissionInProgress = false;
+
+                // Show submission modal immediately for manual triggers
+                const delay = trigger === 'manual' ? 0 : 2000;
+                setTimeout(async () => {
+                    const exportedData = await sessionRecorder.exportForSubmission();
+                    scoreSubmission.showSubmissionModal(exportedData);
+                }, delay);
+            }
+        }
+    }
+
+    /**
+     * Check if current performance is leaderboard-worthy
+     * @returns {boolean}
+     */
+    isLeaderboardWorthy() {
+        const timeMinutes = Math.max(0.01, (Date.now() - this.startTime) / 60000);
+        const currentWPM = Math.round((this.charactersTyped / 5) / timeMinutes);
+        const accuracy = this.totalKeystrokes > 0
+            ? Math.round((this.correctKeystrokes / this.totalKeystrokes) * 100)
+            : 100;
+
+        // Consider it leaderboard-worthy if:
+        // - Completed 5+ stages
+        // - OR achieved 40+ WPM with 85%+ accuracy
+        // - OR played for 2+ minutes with 30+ WPM
+        // - OR reached stage 10+ (word stages)
+        return (this.currentStage >= 5) ||
+               (currentWPM >= 40 && accuracy >= 85) ||
+               (timeMinutes >= 2 && currentWPM >= 30) ||
+               (this.currentStage >= 10);
+    }
+
+    /**
      * Update difficulty based on performance
      */
     updateDifficulty() {
@@ -855,6 +933,16 @@ class TypingLevel {
                 // Save the current stage to player progress
                 this.game.state.playerProgress.typingStage = this.currentStage;
                 this.game.saveProgress();
+
+                // Check if this is a leaderboard-worthy achievement
+                // Offer submission at stages 5, 10, 15, and final stage
+                const milestoneStages = [4, 9, 14, this.stages.length - 2]; // 0-indexed
+                if (milestoneStages.includes(this.currentStage - 1) && this.isLeaderboardWorthy()) {
+                    // Show submission modal after stage notification
+                    setTimeout(() => {
+                        this.triggerScoreSubmission('stage_milestone');
+                    }, 6000); // Wait for stage notification to clear
+                }
 
                 // Update session recorder stage
                 if (typeof sessionRecorder !== 'undefined' && sessionRecorder.isSessionActive()) {
@@ -981,17 +1069,8 @@ class TypingLevel {
         // Clear remaining words
         this.words = [];
 
-        // End session and show score submission
-        if (typeof sessionRecorder !== 'undefined' && sessionRecorder.isSessionActive()) {
-            const sessionData = sessionRecorder.endSession();
-            if (sessionData && typeof scoreSubmission !== 'undefined') {
-                // Wait a moment for the level complete animation to show
-                setTimeout(async () => {
-                    const exportedData = await sessionRecorder.exportForSubmission();
-                    scoreSubmission.showSubmissionModal(exportedData);
-                }, 2000);
-            }
-        }
+        // Trigger score submission for this achievement
+        this.triggerScoreSubmission('level_complete');
 
         // Trigger level complete animation
         this.levelCompleteTimer = 0;
@@ -1038,6 +1117,13 @@ class TypingLevel {
         const accuracyDisplay = document.getElementById('accuracy-display');
         if (accuracyDisplay) {
             accuracyDisplay.textContent = `${accuracy}%`;
+        }
+
+        // Show/hide submit score button based on performance
+        const submitButton = document.getElementById('submit-score-button');
+        if (submitButton) {
+            const shouldShow = this.isLeaderboardWorthy() && !this.levelCompleted;
+            submitButton.style.display = shouldShow ? 'inline-block' : 'none';
         }
     }
 
