@@ -105,6 +105,15 @@ class TypingLevel {
 
         // Flag to prevent spawning during stage notifications
         this.spawningEnabled = true;
+
+        // Score submission interstitial state
+        this.scoreSubmissionState = null;
+        this.submissionInitials = '';
+        this.submissionCursorBlink = 0;
+        this.submissionError = null;
+        this.submissionErrorTimer = 0;
+        this.pendingSubmissionTrigger = null;
+        this.pendingTestSubmission = false;
     }
 
     /**
@@ -121,8 +130,6 @@ class TypingLevel {
             sessionRecorder.startSession(seed);
         }
 
-        // Setup submit score button
-        this.setupSubmitScoreButton();
 
         // Restore saved stage from player progress
         if (this.game.state.playerProgress.typingStage !== undefined) {
@@ -257,6 +264,12 @@ class TypingLevel {
      * @param {number} deltaTime - Time since last update in seconds
      */
     update(deltaTime) {
+        // Handle score submission interstitial
+        if (this.scoreSubmissionState) {
+            this.updateScoreSubmission(deltaTime);
+            return; // Don't update game while submitting
+        }
+
         if (this.levelCompleted) {
             this.updateLevelCompleteAnimation(deltaTime);
             return;
@@ -284,6 +297,25 @@ class TypingLevel {
             this.stageNotification.timer -= deltaTime;
             if (this.stageNotification.timer <= 0) {
                 this.stageNotification = null;
+
+                // Check if we have a pending test submission (developer hotkey)
+                if (this.pendingTestSubmission) {
+                    this.pendingTestSubmission = false;
+                    // Wait a moment for the notification to fully clear
+                    setTimeout(() => {
+                        this.triggerTestSubmission();
+                    }, 500);
+                }
+                // Check if we have a pending regular submission to show after stage notification
+                else if (this.pendingSubmissionTrigger) {
+                    const trigger = this.pendingSubmissionTrigger;
+                    this.pendingSubmissionTrigger = null;
+
+                    // Wait a moment for the notification to fully clear, then show submission
+                    setTimeout(() => {
+                        this.triggerScoreSubmission(trigger);
+                    }, 500);
+                }
             }
         }
 
@@ -488,6 +520,12 @@ class TypingLevel {
      * @param {Object} data - Keyboard event data
      */
     handleKeyInput(data) {
+        // Handle input during score submission interstitial
+        if (this.scoreSubmissionState) {
+            this.handleSubmissionInput(data);
+            return;
+        }
+
         // Developer hotkey for testing score submission (only on localhost)
         const isLocalDev = window.location.hostname === 'localhost' ||
                           window.location.hostname === '127.0.0.1' ||
@@ -774,12 +812,12 @@ class TypingLevel {
      */
     createExplosion(x, y) {
         const particles = [];
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 15; i++) { // Same as attract mode
             particles.push({
                 x: x,
                 y: y,
-                vx: (Math.random() - 0.5) * 300,
-                vy: (Math.random() - 0.5) * 300,
+                vx: (Math.random() - 0.5) * 250, // Match attract mode velocity
+                vy: (Math.random() - 0.5) * 250,
                 life: 1
             });
         }
@@ -864,26 +902,26 @@ class TypingLevel {
     }
 
 
-    /**
-     * Setup submit score button
-     */
-    setupSubmitScoreButton() {
-        const submitButton = document.getElementById('submit-score-button');
-        if (submitButton) {
-            // Add click handler
-            submitButton.onclick = () => {
-                if (this.isLeaderboardWorthy()) {
-                    this.triggerScoreSubmission('manual');
-                }
-            };
-        }
-    }
 
     /**
      * Trigger test submission with mock data (developer testing only)
      */
     triggerTestSubmission() {
         console.log('Developer mode: Triggering test score submission');
+
+        // Don't allow if submission is already in progress
+        if (this.scoreSubmissionState) {
+            console.log('Submission already in progress');
+            return;
+        }
+
+        // If there's a stage notification showing, wait for it to clear
+        if (this.stageNotification) {
+            console.log('Waiting for stage notification to clear...');
+            // Queue the test submission for after the notification
+            this.pendingTestSubmission = true;
+            return;
+        }
 
         // Calculate current stats
         const timeMinutes = Math.max(0.01, (Date.now() - this.startTime) / 60000);
@@ -924,37 +962,271 @@ class TypingLevel {
             ]
         };
 
-        // Show submission modal directly with mock data
-        if (typeof scoreSubmission !== 'undefined') {
-            scoreSubmission.showSubmissionModal(mockSessionData);
-        } else {
-            console.error('Score submission module not loaded');
+        // Clear any pending submission triggers to avoid conflicts
+        this.pendingSubmissionTrigger = null;
+
+        // Show interstitial submission screen
+        this.showScoreSubmissionInterstitial(mockSessionData);
+    }
+
+    /**
+     * Show score submission interstitial (pauses game)
+     * @param {Object} sessionData - The session data to submit
+     */
+    showScoreSubmissionInterstitial(sessionData) {
+        // Pause the game
+        this.scoreSubmissionState = {
+            sessionData: sessionData,
+            status: 'input', // 'input', 'submitting', 'success', 'error'
+            fadeIn: 0,
+            submitted: false
+        };
+        this.submissionInitials = '';
+        this.submissionCursorBlink = 0;
+        this.submissionError = null;
+        this.submissionErrorTimer = 0;
+
+        // Clear all game state to prevent interference
+        this.spawningEnabled = false;
+        this.words = [];
+        this.lasers = [];
+        this.explosions = [];
+
+        // Clear any pending timers
+        this.clearAllTimers();
+
+        // Clear any notifications
+        this.stageNotification = null;
+        this.recoveryNotification = null;
+
+        // Exit recovery mode if active
+        if (this.recoveryMode) {
+            this.recoveryMode = false;
+            this.recoveryTimer = 0;
         }
     }
 
     /**
-     * Trigger score submission modal
+     * Handle keyboard input during submission
+     * @param {Object} data - Keyboard event data
+     */
+    handleSubmissionInput(data) {
+        if (!this.scoreSubmissionState || this.scoreSubmissionState.status !== 'input') return;
+
+        const key = data.key;
+
+        // Handle Enter to submit
+        if (key === 'Enter') {
+            if (this.submissionInitials.length === 3) {
+                this.submitScore();
+            } else {
+                this.submissionError = 'Enter exactly 3 letters';
+                this.submissionErrorTimer = 2;
+            }
+            return;
+        }
+
+        // Handle backspace
+        if (key === 'Backspace') {
+            if (this.submissionInitials.length > 0) {
+                this.submissionInitials = this.submissionInitials.slice(0, -1);
+                this.submissionError = null;
+            }
+            return;
+        }
+
+        // Only accept letters
+        if (key.length === 1 && /^[a-zA-Z]$/.test(key)) {
+            if (this.submissionInitials.length < 3) {
+                this.submissionInitials += key.toUpperCase();
+                this.submissionError = null;
+            }
+        }
+    }
+
+    /**
+     * Update score submission interstitial
+     * @param {number} deltaTime - Time since last frame
+     */
+    updateScoreSubmission(deltaTime) {
+        if (!this.scoreSubmissionState) return;
+
+        // Fade in animation
+        if (this.scoreSubmissionState.fadeIn < 1) {
+            this.scoreSubmissionState.fadeIn = Math.min(1, this.scoreSubmissionState.fadeIn + deltaTime * 2);
+        }
+
+        // Cursor blink animation
+        this.submissionCursorBlink += deltaTime;
+
+        // Error message timer
+        if (this.submissionErrorTimer > 0) {
+            this.submissionErrorTimer -= deltaTime;
+            if (this.submissionErrorTimer <= 0) {
+                this.submissionError = null;
+            }
+        }
+
+        // Auto-close after success
+        if (this.scoreSubmissionState.status === 'success') {
+            this.scoreSubmissionState.successTimer = (this.scoreSubmissionState.successTimer || 0) + deltaTime;
+            if (this.scoreSubmissionState.successTimer > 2) {
+                this.closeScoreSubmission();
+            }
+        }
+    }
+
+    /**
+     * Submit the score to the API
+     */
+    async submitScore() {
+        if (!this.scoreSubmissionState || this.scoreSubmissionState.status !== 'input') return;
+
+        this.scoreSubmissionState.status = 'submitting';
+
+        try {
+            // Use the score submission module to handle the actual submission
+            if (typeof scoreSubmission !== 'undefined') {
+                // Create a temporary modal just for the API call
+                const response = await this.submitScoreDirectly(
+                    this.submissionInitials,
+                    this.scoreSubmissionState.sessionData
+                );
+
+                if (response.success) {
+                    this.scoreSubmissionState.status = 'success';
+                } else {
+                    this.scoreSubmissionState.status = 'error';
+                    this.submissionError = response.error || 'Submission failed';
+                    this.submissionErrorTimer = 3;
+                    // Go back to input state after error
+                    setTimeout(() => {
+                        if (this.scoreSubmissionState) {
+                            this.scoreSubmissionState.status = 'input';
+                        }
+                    }, 1000);
+                }
+            } else {
+                this.scoreSubmissionState.status = 'error';
+                this.submissionError = 'Submission system not loaded';
+                this.submissionErrorTimer = 3;
+            }
+        } catch (error) {
+            console.error('Score submission error:', error);
+            this.scoreSubmissionState.status = 'error';
+            this.submissionError = 'Network error';
+            this.submissionErrorTimer = 3;
+            setTimeout(() => {
+                if (this.scoreSubmissionState) {
+                    this.scoreSubmissionState.status = 'input';
+                }
+            }, 1000);
+        }
+    }
+
+    /**
+     * Submit score directly without modal
+     * @param {string} initials - Player initials
+     * @param {Object} sessionData - Session data
+     * @returns {Promise<Object>} Submission result
+     */
+    async submitScoreDirectly(initials, sessionData) {
+        // This method will use the scoreSubmission module's internal methods
+        // We need to create the submission data and call the API
+
+        // Get or create user identity
+        let identity = null;
+        if (typeof userIdentity !== 'undefined') {
+            if (!userIdentity.hasIdentity()) {
+                identity = userIdentity.createIdentity(initials);
+            } else {
+                identity = userIdentity.getIdentity();
+                if (identity.initials !== initials) {
+                    userIdentity.updateInitials(initials);
+                    identity.initials = initials;
+                }
+            }
+        } else {
+            identity = {
+                uuid: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                }),
+                initials: initials
+            };
+        }
+
+        // Calculate session hash
+        let calculatedHash = null;
+        if (typeof sessionHash !== 'undefined' && sessionHash.calculate) {
+            try {
+                calculatedHash = await sessionHash.calculate(sessionData);
+            } catch (error) {
+                console.error('Failed to calculate session hash:', error);
+                return { success: false, error: 'Hash calculation failed' };
+            }
+        } else {
+            return { success: false, error: 'Hash system not loaded' };
+        }
+
+        // Prepare submission
+        const submission = {
+            userId: identity.uuid,
+            initials: initials,
+            sessionHash: calculatedHash,
+            sessionData: sessionData,
+            timestamp: Date.now()
+        };
+
+        // Submit to API
+        const response = await fetch('https://typeattack-leaderboard.kerry-f2f.workers.dev/api/submit-score', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(submission)
+        });
+
+        return await response.json();
+    }
+
+    /**
+     * Close the score submission interstitial
+     */
+    closeScoreSubmission() {
+        this.scoreSubmissionState = null;
+        this.submissionInitials = '';
+        this.submissionError = null;
+        this.spawningEnabled = true;
+
+        // Restart session recording for continued play
+        if (typeof sessionRecorder !== 'undefined') {
+            const seed = Date.now();
+            sessionRecorder.startSession(seed);
+        }
+    }
+
+    /**
+     * Trigger score submission interstitial
      * @param {string} trigger - What triggered the submission (e.g., 'stage_complete', 'level_complete', 'high_score')
      */
     triggerScoreSubmission(trigger) {
-        // Don't allow submission if one is already in progress
-        if (this.submissionInProgress) return;
+        // Don't allow submission if one is already in progress or stage notification is showing
+        if (this.scoreSubmissionState || this.stageNotification) return;
 
         if (typeof sessionRecorder !== 'undefined' && sessionRecorder.isSessionActive()) {
-            this.submissionInProgress = true;
             const sessionData = sessionRecorder.endSession();
-            if (sessionData && typeof scoreSubmission !== 'undefined') {
+            if (sessionData) {
+                // Export the session data for submission
+                sessionRecorder.exportForSubmission().then(exportedData => {
+                    // Show interstitial submission screen
+                    this.showScoreSubmissionInterstitial(exportedData);
+                });
+
                 // Restart recording for continued play
                 const seed = Date.now();
                 sessionRecorder.startSession(seed);
-                this.submissionInProgress = false;
-
-                // Show submission modal immediately for manual triggers
-                const delay = trigger === 'manual' ? 0 : 2000;
-                setTimeout(async () => {
-                    const exportedData = await sessionRecorder.exportForSubmission();
-                    scoreSubmission.showSubmissionModal(exportedData);
-                }, delay);
             }
         }
     }
@@ -1004,10 +1276,8 @@ class TypingLevel {
                 // Offer submission at stages 5, 10, 15, and final stage
                 const milestoneStages = [4, 9, 14, this.stages.length - 2]; // 0-indexed
                 if (milestoneStages.includes(this.currentStage - 1) && this.isLeaderboardWorthy()) {
-                    // Show submission modal after stage notification
-                    setTimeout(() => {
-                        this.triggerScoreSubmission('stage_milestone');
-                    }, 6000); // Wait for stage notification to clear
+                    // Mark that we should show submission after stage notification
+                    this.pendingSubmissionTrigger = 'stage_milestone';
                 }
 
                 // Update session recorder stage
@@ -1184,13 +1454,6 @@ class TypingLevel {
         if (accuracyDisplay) {
             accuracyDisplay.textContent = `${accuracy}%`;
         }
-
-        // Show/hide submit score button based on performance
-        const submitButton = document.getElementById('submit-score-button');
-        if (submitButton) {
-            const shouldShow = this.isLeaderboardWorthy() && !this.levelCompleted;
-            submitButton.style.display = shouldShow ? 'inline-block' : 'none';
-        }
     }
 
     /**
@@ -1317,12 +1580,12 @@ class TypingLevel {
             }
         });
 
-        // Draw explosions
+        // Draw explosions (match attract mode with bigger particles)
         this.explosions.forEach(explosion => {
             explosion.particles.forEach(particle => {
                 renderer.save();
                 renderer.setAlpha(particle.life);
-                renderer.drawCircle(particle.x, particle.y, 3, {
+                renderer.drawCircle(particle.x, particle.y, 3, { // Same size as attract mode
                     color: renderer.colors.warning,
                     filled: true
                 });
@@ -1507,6 +1770,11 @@ class TypingLevel {
             renderer.restore();
         }
 
+        // Draw score submission interstitial
+        if (this.scoreSubmissionState) {
+            this.renderScoreSubmission(renderer);
+        }
+
         // Draw level complete message
         if (this.levelCompleted) {
             renderer.drawRect(0, 0, renderer.width, renderer.height, {
@@ -1532,6 +1800,175 @@ class TypingLevel {
                 align: 'center'
             });
         }
+    }
+
+    /**
+     * Render score submission interstitial
+     * @param {Renderer} renderer
+     */
+    renderScoreSubmission(renderer) {
+        const state = this.scoreSubmissionState;
+        if (!state) return;
+
+        const fadeAlpha = state.fadeIn;
+
+        // Draw dark overlay with full opacity for better focus
+        renderer.save();
+        renderer.setAlpha(fadeAlpha * 0.95);
+        renderer.drawRect(0, 0, renderer.width, renderer.height, {
+            color: '#000000',
+            filled: true
+        });
+        renderer.restore();
+
+        // Draw submission box
+        const boxWidth = Math.min(600, renderer.width - 80);
+        const boxHeight = 400;
+        const boxX = (renderer.width - boxWidth) / 2;
+        const boxY = (renderer.height - boxHeight) / 2;
+
+        renderer.save();
+        renderer.setAlpha(fadeAlpha);
+
+        // Draw solid black background first for complete opacity
+        renderer.drawRect(boxX - 2, boxY - 2, boxWidth + 4, boxHeight + 4, {
+            color: '#000000',
+            filled: true
+        });
+
+        // Draw box background with brighter color
+        renderer.drawRect(boxX, boxY, boxWidth, boxHeight, {
+            color: '#0a0a1e',
+            filled: true
+        });
+
+        // Draw box border with glow effect
+        renderer.ctx.shadowColor = '#00ff00';
+        renderer.ctx.shadowBlur = 10;
+        renderer.drawRect(boxX, boxY, boxWidth, boxHeight, {
+            color: '#00ff00',
+            filled: false,
+            lineWidth: 3
+        });
+        renderer.ctx.shadowBlur = 0;
+
+        // Draw title
+        const titleY = boxY + 50;
+        renderer.drawText('SUBMIT YOUR SCORE!', renderer.width / 2, titleY, {
+            color: '#00ff00',
+            size: 'huge',
+            align: 'center',
+            baseline: 'middle'
+        });
+
+        // Draw performance stats
+        const stats = state.sessionData.stats || {};
+        const statsY = titleY + 80;
+
+        renderer.drawText(`WPM: ${stats.wpm || 0}`, renderer.width / 2 - 100, statsY, {
+            color: '#00ffff',
+            size: 'large',
+            align: 'center',
+            baseline: 'middle'
+        });
+
+        renderer.drawText(`ACCURACY: ${stats.accuracy || 0}%`, renderer.width / 2 + 100, statsY, {
+            color: '#00ffff',
+            size: 'large',
+            align: 'center',
+            baseline: 'middle'
+        });
+
+        renderer.drawText(`STAGE: ${state.sessionData.stage || 0}`, renderer.width / 2, statsY + 40, {
+            color: '#00ffff',
+            size: 'large',
+            align: 'center',
+            baseline: 'middle'
+        });
+
+        // Draw initials input area
+        const inputY = statsY + 100;
+        renderer.drawText('Enter Your Initials:', renderer.width / 2, inputY, {
+            color: '#ffffff',
+            size: 'normal',
+            align: 'center',
+            baseline: 'middle'
+        });
+
+        // Draw initials boxes
+        const boxSize = 50;
+        const boxSpacing = 10;
+        const totalWidth = (boxSize * 3) + (boxSpacing * 2);
+        const startX = (renderer.width - totalWidth) / 2;
+        const boxesY = inputY + 40;
+
+        for (let i = 0; i < 3; i++) {
+            const x = startX + (i * (boxSize + boxSpacing));
+
+            // Draw box
+            renderer.drawRect(x, boxesY, boxSize, boxSize, {
+                color: i < this.submissionInitials.length ? '#00ff00' : '#666666',
+                filled: false,
+                lineWidth: 2
+            });
+
+            // Draw letter if exists
+            if (i < this.submissionInitials.length) {
+                renderer.drawText(this.submissionInitials[i], x + boxSize / 2, boxesY + boxSize / 2, {
+                    color: '#00ff00',
+                    size: 'huge',
+                    align: 'center',
+                    baseline: 'middle'
+                });
+            } else if (i === this.submissionInitials.length) {
+                // Draw blinking cursor
+                const cursorVisible = Math.floor(this.submissionCursorBlink * 2) % 2 === 0;
+                if (cursorVisible) {
+                    renderer.drawRect(x + boxSize / 2 - 2, boxesY + 10, 4, boxSize - 20, {
+                        color: '#ffffff',
+                        filled: true
+                    });
+                }
+            }
+        }
+
+        // Draw status/error message
+        if (state.status === 'submitting') {
+            renderer.drawText('Submitting...', renderer.width / 2, boxesY + 80, {
+                color: '#00aaff',
+                size: 'normal',
+                align: 'center',
+                baseline: 'middle'
+            });
+        } else if (state.status === 'success') {
+            renderer.drawText('✓ Score Submitted!', renderer.width / 2, boxesY + 80, {
+                color: '#00ff00',
+                size: 'large',
+                align: 'center',
+                baseline: 'middle'
+            });
+        } else if (state.status === 'error' || this.submissionError) {
+            const errorMsg = this.submissionError || 'Submission failed';
+            renderer.drawText(errorMsg, renderer.width / 2, boxesY + 80, {
+                color: '#ff4444',
+                size: 'normal',
+                align: 'center',
+                baseline: 'middle'
+            });
+        }
+
+        // Draw instructions (only during input)
+        if (state.status === 'input') {
+            const instructY = boxY + boxHeight - 40;
+            renderer.drawText('Press ENTER to submit', renderer.width / 2, instructY, {
+                color: '#999999',
+                size: 'small',
+                align: 'center',
+                baseline: 'middle'
+            });
+        }
+
+        renderer.restore();
     }
 
     /**

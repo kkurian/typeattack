@@ -366,9 +366,7 @@ body {
     margin: 20px 0;
     font-size: 24px;
     text-align: center;
-    background: rgba(0, 0, 0, 0.9);
     padding: 10px 20px;
-    border-radius: 5px;
     text-shadow: 0 0 10px #0f0;
 }
 
@@ -377,9 +375,7 @@ body {
     font-size: 12px;
     line-height: 1.2;
     margin-bottom: 20px;
-    background: rgba(0, 0, 0, 0.9);
     padding: 20px;
-    border-radius: 10px;
     text-shadow: 0 0 5px #0f0;
 }
 
@@ -393,12 +389,53 @@ body {
     cursor: pointer;
     text-transform: uppercase;
     transition: all 0.3s ease;
+    opacity: 0; /* Start with opacity 0 for fade-in */
+    visibility: hidden; /* Initially hidden to prevent START/RESUME flicker */
+}
+
+.game-button.visible {
+    opacity: 1;
+    visibility: visible;
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .game-button:hover {
     background: #0f0;
     color: #000;
     box-shadow: 0 0 20px #0f0;
+}
+
+/* New Game Link */
+#new-game-link {
+    margin-top: 20px;
+    text-align: center;
+}
+
+#new-game-button {
+    color: #666;
+    font-size: 14px;
+    text-decoration: none;
+    border-bottom: 1px dotted #666;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+#new-game-button:hover {
+    color: #0f0;
+    border-bottom-color: #0f0;
+    text-shadow: 0 0 5px #0f0;
 }
 
 #instructions {
@@ -504,19 +541,79 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.95); /* Nearly opaque for better focus */
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: 2000; /* Higher z-index to ensure it's on top */
+    backdrop-filter: blur(3px); /* Add blur for better focus */
 }
 
 .modal-content {
     background: #000;
-    border: 2px solid #0f0;
+    border: 3px solid #0f0; /* Thicker border */
     padding: 40px;
     text-align: center;
     max-width: 400px;
+    box-shadow: 0 0 30px rgba(0, 255, 0, 0.5), /* Green glow */
+                0 0 60px rgba(0, 255, 0, 0.3),
+                0 0 100px rgba(0, 255, 0, 0.1);
+}
+
+.modal-overlay.fade-in {
+    animation: modalFadeIn 0.3s ease-out forwards;
+}
+
+.modal-overlay.fade-in .modal-content {
+    animation: modalAppear 0.3s ease-out forwards;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes modalAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal-overlay.fade-out {
+    animation: modalFadeOut 0.3s ease-out forwards;
+}
+
+.modal-overlay.fade-out .modal-content {
+    animation: modalContentFadeOut 0.3s ease-out forwards;
+}
+
+@keyframes modalFadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes modalContentFadeOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.9);
+    }
 }
 
 .modal-content h2 {
@@ -532,8 +629,15 @@ body {
 }
 
 .modal-content .warning-text {
-    color: #ff0000;
+    color: #ff6b6b; /* Softer, more readable red */
     font-weight: bold;
+    background: rgba(255, 107, 107, 0.1); /* Subtle red background */
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    display: inline-block;
+    margin: 10px auto;
+    text-shadow: 0 0 10px rgba(255, 107, 107, 0.5); /* Soft glow */
 }
 
 .modal-buttons {
@@ -561,13 +665,15 @@ body {
 }
 
 .modal-button.danger {
-    border-color: #ff0000;
-    color: #ff0000;
+    border-color: #ff6b6b;
+    color: #ff6b6b;
+    text-shadow: 0 0 5px rgba(255, 107, 107, 0.5);
 }
 
 .modal-button.danger:hover {
-    background: #ff0000;
+    background: #ff6b6b;
     color: #000;
+    box-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
 }
 
 /* Tutorial Overlay */

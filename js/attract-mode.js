@@ -264,12 +264,12 @@ class AttractMode {
 
     createExplosion(x, y) {
         const particles = [];
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 15; i++) { // More particles for bigger explosions
             particles.push({
                 x: x,
                 y: y,
-                vx: (Math.random() - 0.5) * 200,
-                vy: (Math.random() - 0.5) * 200,
+                vx: (Math.random() - 0.5) * 250, // Increased velocity
+                vy: (Math.random() - 0.5) * 250,
                 life: 1
             });
         }
@@ -283,12 +283,12 @@ class AttractMode {
     }
 
     updateBackgroundParticles(deltaTime) {
-        // Spawn new particles occasionally
-        if (Math.random() < 0.02) {
+        // Spawn new particles more frequently for a livelier effect
+        if (Math.random() < 0.05) { // Increased from 0.02
             this.particles.push({
                 x: Math.random() * this.width,
                 y: this.height + 10,
-                vy: -50 - Math.random() * 100,
+                vy: -50 - Math.random() * 150, // Increased speed variance
                 life: 1
             });
         }
@@ -308,16 +308,16 @@ class AttractMode {
         this.ctx.fillStyle = '#000';
         this.ctx.fillRect(0, 0, this.width, this.height);
 
-        // Set overall dimness for attract mode
+        // Set overall brightness for attract mode
         this.ctx.save();
-        this.ctx.globalAlpha = 0.6; // Make everything 60% opacity for better visibility
+        this.ctx.globalAlpha = 0.85; // Make everything 85% opacity for brighter visibility
 
         // Draw background particles
         this.particles.forEach(particle => {
             this.ctx.save();
-            this.ctx.globalAlpha = particle.life * 0.3;
+            this.ctx.globalAlpha = particle.life * 0.5; // Increased from 0.3 for more visibility
             this.ctx.fillStyle = '#00ff00';
-            this.ctx.fillRect(particle.x, particle.y, 2, 2);
+            this.ctx.fillRect(particle.x, particle.y, 3, 3); // Slightly bigger particles
             this.ctx.restore();
         });
 
@@ -371,9 +371,11 @@ class AttractMode {
             explosion.particles.forEach(particle => {
                 this.ctx.save();
                 this.ctx.globalAlpha = particle.life;
-                this.ctx.fillStyle = '#ffff00';
+                // Use a brighter color mix for explosions
+                const colors = ['#ffff00', '#ff6600', '#ffffff', '#00ffff'];
+                this.ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
                 this.ctx.beginPath();
-                this.ctx.arc(particle.x, particle.y, 2, 0, Math.PI * 2);
+                this.ctx.arc(particle.x, particle.y, 3, 0, Math.PI * 2); // Slightly bigger particles
                 this.ctx.fill();
                 this.ctx.restore();
             });

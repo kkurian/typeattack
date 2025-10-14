@@ -32,11 +32,8 @@
     <div id="ui-overlay">
         <!-- Top Bar -->
         <div id="top-bar">
-            <!-- Left: Control Buttons -->
-            <div id="game-controls">
-                <button id="reset-button" class="control-button" style="display:none;">RESET</button>
-                <button id="submit-score-button" class="control-button" style="display:none;">SUBMIT SCORE</button>
-            </div>
+            <!-- Left: Empty space for symmetry -->
+            <div id="game-controls"></div>
 
             <!-- Center: Stage Chevrons (trophies/stars) -->
             <div id="stage-chevrons"></div>
@@ -79,14 +76,14 @@
         </div>
     </div>
 
-    <!-- Reset Confirmation Modal -->
+    <!-- New Game Confirmation Modal -->
     <div id="reset-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
-            <h2>RESET PROGRESS?</h2>
+            <h2>START NEW GAME?</h2>
             <p>Are you sure you want to lose all your progress?</p>
             <p class="warning-text">This action cannot be undone!</p>
             <div class="modal-buttons">
-                <button id="reset-confirm" class="modal-button danger">YES, RESET</button>
+                <button id="reset-confirm" class="modal-button danger">YES, NEW GAME</button>
                 <button id="reset-cancel" class="modal-button">CANCEL</button>
             </div>
         </div>
@@ -105,6 +102,9 @@
         </pre>
         <h2>Type fast. Type well. Type to survive.</h2>
         <button id="start-button" class="game-button">START GAME</button>
+        <div id="new-game-link" style="margin-top: 20px; text-align: center;">
+            <a href="#" id="new-game-button" style="color: #666; font-size: 14px; text-decoration: none; border-bottom: 1px dotted #666;">New Game</a>
+        </div>
         <div id="mobile-message" style="display: none; text-align: center; padding: 20px; color: #ff6b6b; max-width: 400px; margin: 0 auto;">
             <h3 style="margin-bottom: 10px;">⌨️ Keyboard Required</h3>
             <p style="margin: 0; line-height: 1.6;">TypeAttack requires a physical keyboard to play. Please visit this site on a desktop or laptop computer.</p>

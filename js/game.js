@@ -75,6 +75,8 @@ class TypeAttackGame {
 
             if (startBtn) {
                 startBtn.style.display = 'none';
+                // Also ensure visibility is hidden for mobile
+                startBtn.style.visibility = 'hidden';
                 console.log('Button hidden');
             }
             if (mobileMsg) {
@@ -179,13 +181,34 @@ class TypeAttackGame {
         // Start button (only works on desktop - button hidden on mobile)
         const startBtn = document.getElementById('start-button');
         if (startBtn) {
+            // Update button text based on saved progress
+            const hasProgress = this.state.playerProgress &&
+                              (this.state.playerProgress.typingStage > 0 ||
+                               this.state.playerProgress.totalPlayTime > 0 ||
+                               this.state.playerProgress.typingProficiency > 0);
+
+            if (hasProgress) {
+                startBtn.textContent = 'RESUME GAME';
+            } else {
+                startBtn.textContent = 'START GAME';
+            }
+
+            // Add visible class to trigger fade-in animation
+            // Small delay to ensure DOM is ready and CSS animation works properly
+            setTimeout(() => {
+                startBtn.classList.add('visible');
+            }, 100);
+
             startBtn.addEventListener('click', () => this.start());
         }
 
-        // Reset button
-        const resetBtn = document.getElementById('reset-button');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => this.showResetModal());
+        // New Game link on start screen
+        const newGameBtn = document.getElementById('new-game-button');
+        if (newGameBtn) {
+            newGameBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showResetModal();
+            });
         }
 
         // Reset modal handlers
@@ -295,15 +318,11 @@ class TypeAttackGame {
             startScreen.classList.add('hidden');
         }
 
-        // Show top bar and game controls
+        // Show top bar
         const topBar = document.getElementById('top-bar');
         if (topBar) {
             topBar.style.display = 'flex';
         }
-
-        document.querySelectorAll('.control-button').forEach(btn => {
-            btn.style.display = 'inline-block';
-        });
 
         // Start with typing level
         this.loadLevel('typing');
@@ -485,7 +504,17 @@ class TypeAttackGame {
     showResetModal() {
         const modal = document.getElementById('reset-modal');
         if (modal) {
+            // Remove any existing animation classes
+            modal.classList.remove('fade-in', 'fade-out');
+
+            // Show the modal
             modal.style.display = 'flex';
+
+            // Force a reflow to ensure the display change is processed
+            void modal.offsetHeight;
+
+            // Add fade-in class to trigger animation
+            modal.classList.add('fade-in');
         }
     }
 
@@ -495,7 +524,15 @@ class TypeAttackGame {
     hideResetModal() {
         const modal = document.getElementById('reset-modal');
         if (modal) {
-            modal.style.display = 'none';
+            // Remove fade-in and add fade-out class
+            modal.classList.remove('fade-in');
+            modal.classList.add('fade-out');
+
+            // Wait for animation to complete before hiding
+            setTimeout(() => {
+                modal.style.display = 'none';
+                modal.classList.remove('fade-out');
+            }, 300); // Match animation duration
         }
     }
 
@@ -534,11 +571,19 @@ class TypeAttackGame {
             }
         };
 
-        // Hide modal
-        this.hideResetModal();
+        // Hide modal with animation
+        const modal = document.getElementById('reset-modal');
+        if (modal) {
+            modal.classList.add('fade-out');
 
-        // Reload to start fresh
-        location.reload();
+            // Wait for animation then reload
+            setTimeout(() => {
+                location.reload();
+            }, 300);
+        } else {
+            // Fallback if modal not found
+            location.reload();
+        }
     }
 
     /**
