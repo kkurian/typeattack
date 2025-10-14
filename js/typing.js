@@ -488,11 +488,10 @@ class TypingLevel {
      * @param {Object} data - Keyboard event data
      */
     handleKeyInput(data) {
-        // Developer hotkey for testing score submission (only on localhost or dev environments)
+        // Developer hotkey for testing score submission (only on localhost)
         const isLocalDev = window.location.hostname === 'localhost' ||
                           window.location.hostname === '127.0.0.1' ||
-                          window.location.protocol === 'file:' ||
-                          window.location.hostname.includes('github.io');
+                          window.location.protocol === 'file:';
 
         if (isLocalDev) {
             if (data.key === '1' && !data.ctrlKey && !data.metaKey && !data.altKey) {
