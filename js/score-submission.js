@@ -6,7 +6,7 @@
 
 class ScoreSubmission {
   constructor() {
-    this.apiUrl = '/api/submit-score'; // Will need to be updated with actual Cloudflare Worker URL
+    this.apiUrl = 'https://typeattack-leaderboard.kerry-f2f.workers.dev/api/submit-score';
     this.isSubmitting = false;
     this.sessionData = null;
   }
@@ -289,13 +289,6 @@ class ScoreSubmission {
    * @returns {Promise<Object>} API response
    */
   async postToAPI(data) {
-    // For development, just simulate success
-    // In production, this will POST to the Cloudflare Worker
-    if (this.apiUrl.startsWith('/api/')) {
-      console.log('Score submission data:', data);
-      return { success: true, userId: data.userId };
-    }
-
     const response = await fetch(this.apiUrl, {
       method: 'POST',
       headers: {
