@@ -13,6 +13,15 @@ class TypingLevel {
         this.typedText = '';
         this.score = 0;
         this.streak = 0;
+        this.comboMultiplier = 1;
+        this.hotStreakCounter = 0; // Counts consecutive correct keystrokes
+        this.hotStreakActive = false;
+        this.hotStreakMusicStop = null; // Function to stop hot streak music
+        this.hotStreakStartTime = 0;
+        this.hotStreakBonus = 0; // Accumulated bonus points during hot streak
+        this.hotStreakBonusAnimation = null; // Animation when bonus is awarded
+        this.hotStreakMultiplierDisplay = null; // Display when multiplier changes
+        this.lastHotStreakMultiplier = 1; // Track last multiplier to detect changes
 
         // Timing
         this.spawnTimer = 0;
@@ -28,13 +37,6 @@ class TypingLevel {
         this.recentTypingSpeed = 0; // Characters per second
         this.adaptiveSpawnTimer = 0;
 
-        // Adaptive difficulty for struggling players
-        this.missedWords = 0;
-        this.recentMisses = [];
-        this.recoveryMode = false;
-        this.recoveryTimer = 0;
-        this.normalSpeed = this.baseSpeed;
-        this.normalSpawnInterval = this.baseSpawnInterval;
 
         // Statistics
         this.totalKeystrokes = 0;
@@ -42,6 +44,8 @@ class TypingLevel {
         this.startTime = 0;
         this.charactersTyped = 0;
         this.wordsCompleted = 0;
+        this.wordsMissed = 0; // Track how many words reached the edge
+        this.maxWordsMissed = 10; // Game over after missing 10 words
 
         // Proficiency tracking
         this.wpmHistory = [];
@@ -87,6 +91,7 @@ class TypingLevel {
         this.lasers = [];
         this.explosions = [];
         this.pendingLaserTimers = []; // Track setTimeout IDs for cleanup
+        this.scorePopups = []; // Floating score animations
 
         // Vertical positioning lanes
         this.lanes = [0.3, 0.4, 0.5, 0.6, 0.7]; // Percentage of screen height
@@ -97,6 +102,9 @@ class TypingLevel {
 
         // Level complete flag
         this.levelCompleted = false;
+        this.gameOver = false; // Track game over state
+        this.gameOverTimer = 0; // Timer for auto-return to menu
+        this.gameOverTimeout = 10; // Return to menu after 10 seconds
 
         // Simple instruction display
         this.showInstruction = false;
@@ -132,9 +140,12 @@ class TypingLevel {
         }
 
 
-        // Restore saved stage from player progress
+        // Restore saved stage and score from player progress
         if (this.game.state.playerProgress.typingStage !== undefined) {
             this.currentStage = this.game.state.playerProgress.typingStage;
+        }
+        if (this.game.state.playerProgress.typingScore !== undefined) {
+            this.score = this.game.state.playerProgress.typingScore;
 
             // Adjust spawn rate and speed for the restored stage
             const isLetterStage = this.currentStage < 10;
@@ -209,11 +220,25 @@ class TypingLevel {
         // Clear any pending timers before resetting
         this.clearAllTimers();
 
+        // Stop hot streak music if playing
+        if (this.hotStreakMusicStop) {
+            this.hotStreakMusicStop();
+            this.hotStreakMusicStop = null;
+        }
+
         this.words = [];
         this.activeWordIndex = -1;
         this.typedText = '';
         this.score = 0;
         this.streak = 0;
+        this.comboMultiplier = 1;
+        this.hotStreakCounter = 0;
+        this.hotStreakActive = false;
+        this.hotStreakStartTime = 0;
+        this.hotStreakBonus = 0;
+        this.hotStreakBonusAnimation = null;
+        this.hotStreakMultiplierDisplay = null;
+        this.lastHotStreakMultiplier = 1;
         this.spawnTimer = 0;
         this.currentStage = 0;  // Reset to first stage
         this.baseSpawnInterval = 1.2; // Letter stage spawn rate
@@ -224,20 +249,20 @@ class TypingLevel {
         this.correctKeystrokes = 0;
         this.charactersTyped = 0;
         this.wordsCompleted = 0;
+        this.wordsMissed = 0;
         this.wpmHistory = [];
         this.accuracyHistory = [];
         this.sustainedSeconds = 0;
         this.lasers = [];
         this.explosions = [];
+        this.scorePopups = [];
         this.wordsInCurrentStage = 0;
         this.currentSpeed = this.baseSpeed;
         this.levelCompleted = false;
+        this.gameOver = false;
+        this.gameOverTimer = 0;
         this.currentStageDescription = this.stages[0].description;
         this.stageNotification = null;
-        this.missedWords = 0;
-        this.recentMisses = [];
-        this.recoveryMode = false;
-        this.recoveryTimer = 0;
 
         // Reset instruction display
         this.showInstruction = false;  // Will be set properly in init()
@@ -276,22 +301,16 @@ class TypingLevel {
             return;
         }
 
-        // Update recovery mode
-        if (this.recoveryMode) {
-            this.recoveryTimer -= deltaTime;
-
-            // Exit recovery mode when timer expires or player catches up
-            if (this.recoveryTimer <= 0) {
-                this.exitRecoveryMode();
-            } else {
-                // Also exit if player successfully completes several words in recovery
-                // Check if they completed 3 words without missing any
-                const activeWords = this.words.filter(w => !w.isCompleted).length;
-                if (activeWords <= 1 && this.streak >= 3) {
-                    this.exitRecoveryMode();
-                }
+        if (this.gameOver) {
+            // Update game over timer for auto-return to menu
+            this.gameOverTimer += deltaTime;
+            if (this.gameOverTimer >= this.gameOverTimeout) {
+                // Return to main menu
+                window.location.reload();
             }
+            return; // Don't update game logic during game over
         }
+
 
         // Update stage notification timer
         if (this.stageNotification && this.stageNotification.timer > 0) {
@@ -320,13 +339,6 @@ class TypingLevel {
             }
         }
 
-        // Update recovery notification timer
-        if (this.recoveryNotification && this.recoveryNotification.timer > 0) {
-            this.recoveryNotification.timer -= deltaTime;
-            if (this.recoveryNotification.timer <= 0) {
-                this.recoveryNotification = null;
-            }
-        }
 
         // Handle instruction display and fading
         if (this.showInstruction) {
@@ -346,27 +358,25 @@ class TypingLevel {
             }
         }
 
-        // Update typing speed tracking (but not during recovery mode)
-        if (!this.recoveryMode) {
-            this.adaptiveSpawnTimer += deltaTime;
-            if (this.adaptiveSpawnTimer >= 1.0) { // Calculate typing speed every second
-                const timeSeconds = (Date.now() - this.startTime) / 1000;
-                if (timeSeconds > 0) {
-                    this.recentTypingSpeed = this.charactersTyped / timeSeconds;
-                }
-                this.adaptiveSpawnTimer = 0;
+        // Update typing speed tracking
+        this.adaptiveSpawnTimer += deltaTime;
+        if (this.adaptiveSpawnTimer >= 1.0) { // Calculate typing speed every second
+            const timeSeconds = (Date.now() - this.startTime) / 1000;
+            if (timeSeconds > 0) {
+                this.recentTypingSpeed = this.charactersTyped / timeSeconds;
+            }
+            this.adaptiveSpawnTimer = 0;
 
-                // Adjust spawn interval based on typing speed
-                // Fast typists need more words to maintain their speed
-                if (this.recentTypingSpeed > 4) { // > 48 WPM (assuming 5 char words)
-                    this.spawnInterval = this.minSpawnInterval;
-                } else if (this.recentTypingSpeed > 3) { // > 36 WPM
-                    this.spawnInterval = 0.8;
-                } else if (this.recentTypingSpeed > 2) { // > 24 WPM
-                    this.spawnInterval = 1.2;
-                } else {
-                    this.spawnInterval = this.baseSpawnInterval;
-                }
+            // Adjust spawn interval based on typing speed
+            // Fast typists need more words to maintain their speed
+            if (this.recentTypingSpeed > 4) { // > 48 WPM (assuming 5 char words)
+                this.spawnInterval = this.minSpawnInterval;
+            } else if (this.recentTypingSpeed > 3) { // > 36 WPM
+                this.spawnInterval = 0.8;
+            } else if (this.recentTypingSpeed > 2) { // > 24 WPM
+                this.spawnInterval = 1.2;
+            } else {
+                this.spawnInterval = this.baseSpawnInterval;
             }
         }
 
@@ -419,6 +429,32 @@ class TypingLevel {
         // Update visual effects
         this.updateLasers(deltaTime);
         this.updateExplosions(deltaTime);
+        this.updateScorePopups(deltaTime);
+
+        // Update bonus animation
+        if (this.hotStreakBonusAnimation) {
+            this.hotStreakBonusAnimation.timer -= deltaTime;
+            this.hotStreakBonusAnimation.opacity = Math.max(0, this.hotStreakBonusAnimation.timer / 2);
+            this.hotStreakBonusAnimation.y -= deltaTime * 50; // Float upward
+            this.hotStreakBonusAnimation.scale = Math.max(1, this.hotStreakBonusAnimation.scale - deltaTime * 0.5);
+
+            if (this.hotStreakBonusAnimation.timer <= 0) {
+                this.hotStreakBonusAnimation = null;
+            }
+        }
+
+        // Update multiplier display animation
+        if (this.hotStreakMultiplierDisplay) {
+            this.hotStreakMultiplierDisplay.timer -= deltaTime;
+            // Quick scale down animation
+            if (this.hotStreakMultiplierDisplay.scale > 1) {
+                this.hotStreakMultiplierDisplay.scale = Math.max(1, this.hotStreakMultiplierDisplay.scale - deltaTime * 2);
+            }
+
+            if (this.hotStreakMultiplierDisplay.timer <= 0) {
+                this.hotStreakMultiplierDisplay = null;
+            }
+        }
 
         // Update proficiency tracking
         this.updateProficiency(deltaTime);
@@ -521,6 +557,21 @@ class TypingLevel {
      * @param {Object} data - Keyboard event data
      */
     handleKeyInput(data) {
+        // Handle input during game over
+        if (this.gameOver && !this.scoreSubmissionState) {
+            if (data.key === 'r' || data.key === 'R') {
+                // Restart the game
+                this.reset();
+                this.init();
+                return;
+            } else if (data.key === 'Escape') {
+                // Return to main menu
+                window.location.reload(); // Simple way to return to start screen
+                return;
+            }
+            return; // Ignore other input during game over
+        }
+
         // Handle input during score submission interstitial
         if (this.scoreSubmissionState) {
             this.handleSubmissionInput(data);
@@ -580,6 +631,61 @@ class TypingLevel {
             this.typedText += key;
             activeWord.typedIndex++;
             this.streak++;
+            this.hotStreakCounter++;
+
+            // Check for hot streak activation (starts at 10 keystrokes)
+            if (!this.hotStreakActive && this.hotStreakCounter >= 10) {
+                this.hotStreakActive = true;
+                this.hotStreakStartTime = Date.now();
+                this.lastHotStreakMultiplier = 1.25;
+
+                // Show multiplier display
+                this.hotStreakMultiplierDisplay = {
+                    text: '1.25x MULTIPLIER!',
+                    timer: 3.0, // Show for 3 seconds
+                    scale: 2.0, // Start big
+                    color: '#ffaa00' // Orange
+                };
+
+                // Start hot streak music
+                if (window.AudioManager && window.AudioManager.initialized) {
+                    this.hotStreakMusicStop = window.AudioManager.playHotStreakMusic();
+                    window.AudioManager.playPowerUp(); // Play power-up for first activation
+                }
+            } else if (this.hotStreakActive) {
+                // Check for multiplier changes
+                let currentMultiplier = 1.25;
+                let multiplierText = '1.25x';
+                let multiplierColor = '#ffaa00';
+
+                if (this.hotStreakCounter >= 50) {
+                    currentMultiplier = 3.0;
+                    multiplierText = '3x';
+                    multiplierColor = '#ff00ff';
+                } else if (this.hotStreakCounter >= 30) {
+                    currentMultiplier = 2.0;
+                    multiplierText = '2x';
+                    multiplierColor = '#ff0000';
+                } else if (this.hotStreakCounter >= 20) {
+                    currentMultiplier = 1.5;
+                    multiplierText = '1.5x';
+                    multiplierColor = '#ffff00';
+                }
+
+                // If multiplier changed, show it and play sound
+                if (currentMultiplier !== this.lastHotStreakMultiplier) {
+                    this.lastHotStreakMultiplier = currentMultiplier;
+
+                    this.hotStreakMultiplierDisplay = {
+                        text: `${multiplierText} MULTIPLIER!`,
+                        timer: 3.0,
+                        scale: 2.0,
+                        color: multiplierColor
+                    };
+
+                    window.AudioManager.playPowerUp();
+                }
+            }
 
             // Play keystroke sound
             window.AudioManager.playKeystroke();
@@ -603,9 +709,17 @@ class TypingLevel {
                 }, 150); // 150ms delay to show the completed word with typed text
             }
         } else {
-            // Incorrect keystroke
+            // Incorrect keystroke - ends hot streak
             this.streak = 0;
-            window.AudioManager.playError();
+            this.hotStreakCounter = 0;
+
+            // End hot streak if active and award bonus
+            if (this.hotStreakActive) {
+                this.endHotStreak();
+            }
+
+            // Play wrong key sound
+            window.AudioManager.playWrongKey();
 
             // Register error for cooldown tracking
             this.game.keyboard.registerError();
@@ -625,7 +739,42 @@ class TypingLevel {
         word.isCompleted = true;
         this.wordsCompleted++;
         this.wordsInCurrentStage++;
-        this.score += word.text.length * 10 * Math.max(1, Math.floor(this.streak / 5));
+
+        // More balanced arcade-style scoring system
+        // Base points = word length (1 point per letter for single letters, slightly more for words)
+        let basePoints = this.currentStage < 10 ? word.text.length : word.text.length * 2;
+
+        // Stage bonus (small incremental bonus)
+        const stageBonus = (this.currentStage + 1) * 2;
+
+        // Speed bonus (risk/reward but smaller)
+        // Words further left are worth a bit more
+        const speedBonus = Math.max(0, Math.floor((this.game.renderer.width - word.x) / 50));
+
+        // Combo multiplier (increases with streak but more modest)
+        this.comboMultiplier = 1 + Math.floor(this.streak / 5) * 0.1; // +10% every 5 words
+
+        // Calculate base points (without hot streak bonus)
+        const baseTotal = Math.floor((basePoints + stageBonus + speedBonus) * this.comboMultiplier);
+
+        // If hot streak is active, calculate bonus points (but don't add to score yet)
+        if (this.hotStreakActive) {
+            let bonusMultiplier = 0.25; // Start at 25% bonus
+            if (this.hotStreakCounter >= 50) {
+                bonusMultiplier = 2.0; // 200% bonus for 50+ keystrokes
+            } else if (this.hotStreakCounter >= 30) {
+                bonusMultiplier = 1.0; // 100% bonus for 30+ keystrokes
+            } else if (this.hotStreakCounter >= 20) {
+                bonusMultiplier = 0.5; // 50% bonus for 20+ keystrokes
+            }
+
+            // Add to bonus accumulator (will be awarded when streak ends)
+            const bonusPoints = Math.floor(baseTotal * bonusMultiplier);
+            this.hotStreakBonus += bonusPoints;
+        }
+
+        // Store base points on word for later display and score increment when explosion happens
+        word.points = baseTotal;
 
         // Clear typed text now that the word is complete
         this.typedText = '';
@@ -693,7 +842,24 @@ class TypingLevel {
      */
     wordReachedEdge(word) {
         this.streak = 0;
-        window.AudioManager.playError();
+        this.comboMultiplier = 1; // Reset combo
+        this.hotStreakCounter = 0;
+
+        // End hot streak if active and award bonus
+        if (this.hotStreakActive) {
+            this.endHotStreak();
+        }
+
+        // Increment words missed
+        this.wordsMissed++;
+
+        // Check for game over
+        if (this.wordsMissed >= this.maxWordsMissed) {
+            this.triggerGameOver();
+        } else {
+            // Play word miss sound when word escapes
+            window.AudioManager.playWordMiss();
+        }
 
         // Clear typed text if this was the active word
         if (word.isActive) {
@@ -712,73 +878,126 @@ class TypingLevel {
             });
             word.laserTimers = [];
         }
+    }
 
-        // Track missed words for adaptive difficulty
-        this.missedWords++;
-        this.recentMisses.push(Date.now());
 
-        // Keep only recent misses (last 10 seconds)
-        const tenSecondsAgo = Date.now() - 10000;
-        this.recentMisses = this.recentMisses.filter(time => time > tenSecondsAgo);
 
-        // Check if player is struggling (3+ misses in 10 seconds)
-        if (this.recentMisses.length >= 3 && !this.recoveryMode) {
-            this.enterRecoveryMode();
+    /**
+     * Trigger game over
+     */
+    triggerGameOver() {
+        this.gameOver = true;
+        this.spawningEnabled = false;
+
+        // Play game over sound
+        if (window.AudioManager && window.AudioManager.initialized) {
+            window.AudioManager.playGameOver();
         }
 
-        // Just continue playing - no game over
+        // Stop hot streak music if playing
+        if (this.hotStreakMusicStop) {
+            this.hotStreakMusicStop();
+            this.hotStreakMusicStop = null;
+        }
+
+        // Clear all words from screen
+        this.words = [];
+        this.lasers = [];
+        this.explosions = [];
+
+        // Clear any pending timers
+        this.clearAllTimers();
+
+        // Record session end for leaderboard (if active)
+        if (typeof sessionRecorder !== 'undefined' && sessionRecorder.isSessionActive()) {
+            sessionRecorder.endSession();
+        }
+
+        // Check if score is high enough for submission
+        if (this.isLeaderboardWorthy()) {
+            // Wait a moment for game over sound to play, then show submission
+            setTimeout(() => {
+                this.triggerScoreSubmission('game_over');
+            }, 2500);
+        }
+
+        Utils.log.info(`Game Over - Score: ${this.score}, Words Missed: ${this.wordsMissed}`);
     }
 
     /**
-     * Enter recovery mode to help struggling players
+     * End hot streak and award accumulated bonus
      */
-    enterRecoveryMode() {
-        this.recoveryMode = true;
-        this.recoveryTimer = 10.0; // 10 seconds of easier gameplay
+    endHotStreak() {
+        if (!this.hotStreakActive) return;
 
-        // Store normal values
-        this.normalSpeed = this.currentSpeed;
-        this.normalSpawnInterval = this.spawnInterval;
+        this.hotStreakActive = false;
+        this.lastHotStreakMultiplier = 1;
+        this.hotStreakMultiplierDisplay = null; // Clear any active display
 
-        // Make game easier
-        this.currentSpeed = this.currentSpeed * 0.6; // 60% speed
-        this.spawnInterval = this.spawnInterval * 1.5; // 50% slower spawning
-        this.baseSpawnInterval = this.baseSpawnInterval * 1.5;
-
-        // Clear some words to give breathing room
-        if (this.words.length > 2) {
-            // Remove the leftmost (oldest) words except the rightmost 2
-            this.words.sort((a, b) => b.x - a.x);
-            this.words = this.words.slice(0, 2);
+        // Stop hot streak music
+        if (this.hotStreakMusicStop) {
+            this.hotStreakMusicStop();
+            this.hotStreakMusicStop = null;
         }
 
-        // Show recovery notification
-        this.recoveryNotification = {
-            text: "Slowing down to help you catch up!",
-            timer: 3.0
-        };
+        // Award bonus if any accumulated
+        if (this.hotStreakBonus > 0) {
+            // Add bonus to score
+            this.score += this.hotStreakBonus;
 
-        Utils.log.info('Recovery mode activated - slowing down');
+            // Save updated score
+            this.game.state.playerProgress.typingScore = this.score;
+            this.game.saveProgress();
+
+            // Play celebration sound
+            window.AudioManager.playCelebration();
+
+            // Create bonus animation with clear hot streak labeling
+            this.hotStreakBonusAnimation = {
+                text: `HOT STREAK BONUS`,
+                bonusAmount: `+${this.hotStreakBonus}`,
+                opacity: 1.0,
+                y: this.game.renderer.height / 2, // Center of screen
+                scale: 1.5, // Start smaller
+                timer: 1.5 // Show for shorter time (1.5 seconds)
+            };
+
+            // Reset bonus accumulator
+            this.hotStreakBonus = 0;
+        }
     }
 
     /**
-     * Exit recovery mode
+     * Create floating score popup
+     * @param {number} x - X position
+     * @param {number} y - Y position
+     * @param {number} points - Points to display
      */
-    exitRecoveryMode() {
-        this.recoveryMode = false;
-        this.recoveryTimer = 0;
-
-        // Gradually return to normal speed
-        this.currentSpeed = this.normalSpeed;
-        this.spawnInterval = this.normalSpawnInterval;
-        this.baseSpawnInterval = this.baseSpawnInterval / 1.5;
-
-        // Clear recent misses
-        this.recentMisses = [];
-
-        Utils.log.info('Recovery mode ended - returning to normal');
+    createScorePopup(x, y, points) {
+        this.scorePopups.push({
+            x: x,
+            y: y - 30, // Start above the word
+            text: `+${points}`,
+            life: 0.7, // Shorter lifespan for less distraction
+            vy: -40 // Float upward much slower
+        });
     }
 
+    /**
+     * Update score popups
+     * @param {number} deltaTime
+     */
+    updateScorePopups(deltaTime) {
+        for (let i = this.scorePopups.length - 1; i >= 0; i--) {
+            const popup = this.scorePopups[i];
+            popup.y += popup.vy * deltaTime;
+            popup.life -= deltaTime;
+
+            if (popup.life <= 0) {
+                this.scorePopups.splice(i, 1);
+            }
+        }
+    }
 
     /**
      * Create laser effect FROM BOTTOM OF SCREEN
@@ -862,8 +1081,20 @@ class TypingLevel {
                 // Create explosion at the laser's target position
                 this.createExplosion(laser.targetX, laser.targetY);
 
-                // Only remove the word when the LAST laser hits
+                // Only remove the word and show score when the LAST laser hits
                 if (laser.targetWord && laser.isLastLaser) {
+                    // Increment score when explosion happens (not when laser is shot)
+                    if (laser.targetWord.points) {
+                        this.score += laser.targetWord.points;
+
+                        // Save score to player progress
+                        this.game.state.playerProgress.typingScore = this.score;
+                        this.game.saveProgress();
+
+                        // Show score popup at explosion location
+                        this.createScorePopup(laser.targetX, laser.targetY, laser.targetWord.points);
+                    }
+
                     const index = this.words.indexOf(laser.targetWord);
                     if (index !== -1) {
                         this.words.splice(index, 1);
@@ -935,6 +1166,7 @@ class TypingLevel {
         const mockSessionData = {
             seed: Date.now(),
             stage: this.currentStage + 1,
+            score: this.score, // Include arcade score
             startTime: this.startTime,
             endTime: Date.now(),
             duration: Date.now() - this.startTime,
@@ -998,13 +1230,6 @@ class TypingLevel {
 
         // Clear any notifications
         this.stageNotification = null;
-        this.recoveryNotification = null;
-
-        // Exit recovery mode if active
-        if (this.recoveryMode) {
-            this.recoveryMode = false;
-            this.recoveryTimer = 0;
-        }
 
         // Start playing the looping high score fanfare
         if (window.AudioManager && window.AudioManager.initialized) {
@@ -1448,20 +1673,31 @@ class TypingLevel {
      * Update UI elements
      */
     updateUI() {
-        // Calculate stats
+        // Update score display
+        const scoreDisplay = document.getElementById('score-display');
+        if (scoreDisplay) {
+            scoreDisplay.style.display = 'flex';
+            const scoreValue = scoreDisplay.querySelector('.score-value');
+            if (scoreValue) {
+                // Format score with leading zeros (7 digits like classic arcade)
+                scoreValue.textContent = this.score.toString().padStart(7, '0');
+            }
+        }
+
+        // Calculate stats (for internal use, not displayed in UI anymore)
         const timeMinutes = Math.max(0.01, (Date.now() - this.startTime) / 60000);
         const currentWPM = Math.round((this.charactersTyped / 5) / timeMinutes);
         const accuracy = this.totalKeystrokes > 0
             ? Math.round((this.correctKeystrokes / this.totalKeystrokes) * 100)
             : 100;
 
-        // Update WPM display
+        // Update WPM display (hidden by default now)
         const wpmDisplay = document.getElementById('wpm-display');
         if (wpmDisplay) {
             wpmDisplay.textContent = currentWPM;
         }
 
-        // Update accuracy display
+        // Update accuracy display (hidden by default now)
         const accuracyDisplay = document.getElementById('accuracy-display');
         if (accuracyDisplay) {
             accuracyDisplay.textContent = `${accuracy}%`;
@@ -1605,40 +1841,148 @@ class TypingLevel {
             });
         });
 
-        // Draw recovery mode indicator
-        if (this.recoveryMode) {
-            // Draw subtle background tint
+        // Draw score popups (visible but distinct from targets)
+        this.scorePopups.forEach(popup => {
             renderer.save();
-            renderer.setAlpha(0.1);
-            renderer.drawRect(0, 0, renderer.width, renderer.height, {
-                color: '#0066ff',
-                filled: true
+            renderer.setAlpha(popup.life * 0.9); // Higher opacity for better visibility
+
+            // Add text shadow for better readability
+            renderer.ctx.shadowColor = '#00ccff';
+            renderer.ctx.shadowBlur = 8;
+
+            renderer.drawText(popup.text, popup.x, popup.y, {
+                color: '#00ffff', // Bright cyan, more visible
+                size: 'normal', // Normal size for better readability
+                align: 'center',
+                baseline: 'middle'
             });
+
+            renderer.ctx.shadowBlur = 0;
             renderer.restore();
+        });
 
-            // Draw recovery mode text
-            const recoveryText = "Recovery Mode - Take your time!";
-            const timerText = `${Math.ceil(this.recoveryTimer)}s`;
+        // Draw hot streak bonus animation (when streak ends) - simplified
+        if (this.hotStreakBonusAnimation) {
+            renderer.save();
 
-            renderer.drawText(recoveryText,
-                renderer.width / 2, 100, {
-                color: '#00aaff',
-                size: 'normal',
-                align: 'center',
-                baseline: 'middle'
-            });
+            const anim = this.hotStreakBonusAnimation;
+            renderer.ctx.globalAlpha = anim.opacity;
 
-            renderer.drawText(timerText,
-                renderer.width / 2, 120, {
-                color: '#00aaff',
-                size: 'small',
-                align: 'center',
-                baseline: 'middle'
-            });
+            // Draw "HOT STREAK BONUS" label - smaller and less distracting
+            renderer.ctx.font = `bold ${Math.floor(18 * anim.scale)}px monospace`;
+            renderer.ctx.fillStyle = '#ffaa00'; // Orange
+            renderer.ctx.textAlign = 'center';
+            renderer.ctx.textBaseline = 'middle';
+            renderer.ctx.shadowColor = '#ffaa00';
+            renderer.ctx.shadowBlur = 10;
+            renderer.ctx.fillText(anim.text, renderer.width / 2, anim.y - 20);
+
+            // Draw the bonus amount - not as large
+            renderer.ctx.font = `bold ${Math.floor(32 * anim.scale)}px monospace`;
+            renderer.ctx.fillStyle = '#00ff00'; // Bright green for points
+            renderer.ctx.shadowColor = '#00ff00';
+            renderer.ctx.shadowBlur = 12;
+            renderer.ctx.fillText(anim.bonusAmount, renderer.width / 2, anim.y + 15);
+
+            // No sparkles - too distracting
+
+            renderer.ctx.shadowBlur = 0;
+            renderer.restore();
         }
 
-        // Draw progress to unlock (if close and not in recovery)
-        if (this.sustainedSeconds > 0 && !this.levelCompleted && !this.recoveryMode) {
+        // Draw minimal hot streak indicator when active
+        if (this.hotStreakActive) {
+            renderer.save();
+
+            // Determine current multiplier level and color
+            let streakColor = '#ffaa00'; // Orange default
+            let currentMultiplier = '1.25x';
+            if (this.hotStreakCounter >= 50) {
+                streakColor = '#ff00ff'; // Magenta
+                currentMultiplier = '3x';
+            } else if (this.hotStreakCounter >= 30) {
+                streakColor = '#ff0000'; // Red
+                currentMultiplier = '2x';
+            } else if (this.hotStreakCounter >= 20) {
+                streakColor = '#ffff00'; // Yellow
+                currentMultiplier = '1.5x';
+            }
+
+            // Position below score on the left
+            const leftX = 20;
+            const topY = 90;
+
+            // Subtle pulsing
+            const pulseTime = (Date.now() - this.hotStreakStartTime) / 1000;
+            const pulseAlpha = 0.7 + Math.sin(pulseTime * 4) * 0.3;
+
+            // Draw a simple, clean indicator - just text, no box
+            renderer.ctx.globalAlpha = pulseAlpha;
+
+            // Small flame icon and counter in one line
+            renderer.ctx.font = 'bold 18px monospace';
+            renderer.ctx.fillStyle = streakColor;
+            renderer.ctx.textAlign = 'left';
+            renderer.ctx.textBaseline = 'middle';
+
+            // Add subtle glow
+            renderer.ctx.shadowColor = streakColor;
+            renderer.ctx.shadowBlur = 8;
+
+            // Draw compact indicator: 🔥 HOT STREAK 25
+            const indicatorText = `🔥 HOT STREAK ${this.hotStreakCounter}`;
+            renderer.ctx.fillText(indicatorText, leftX, topY);
+
+            renderer.ctx.shadowBlur = 0;
+            renderer.restore();
+        }
+
+        // Draw clean multiplier announcement (when it changes)
+        if (this.hotStreakMultiplierDisplay) {
+            renderer.save();
+
+            const display = this.hotStreakMultiplierDisplay;
+            const centerX = renderer.width / 2;
+            const centerY = renderer.height / 2 - 100; // Above center
+
+            // Smooth fade in/out
+            let opacity = 1;
+            if (display.timer > 2.5) {
+                // Fade in for first 0.5 seconds
+                opacity = (3.0 - display.timer) / 0.5;
+            } else if (display.timer < 0.5) {
+                // Fade out in last 0.5 seconds
+                opacity = display.timer / 0.5;
+            }
+
+            renderer.ctx.globalAlpha = opacity * 0.9;
+
+            // Draw just the text, large and clear
+            const fontSize = Math.floor(36 + (display.scale - 1) * 12);
+            renderer.ctx.font = `bold ${fontSize}px monospace`;
+            renderer.ctx.fillStyle = display.color;
+            renderer.ctx.textAlign = 'center';
+            renderer.ctx.textBaseline = 'middle';
+
+            // Subtle glow
+            renderer.ctx.shadowColor = display.color;
+            renderer.ctx.shadowBlur = 20;
+
+            // Simple text, no "MULTIPLIER!" - just the number
+            const multiplierText = display.text.replace(' MULTIPLIER!', '');
+            renderer.ctx.fillText(multiplierText, centerX, centerY);
+
+            // Add "MULTIPLIER" below in smaller text
+            renderer.ctx.font = '20px monospace';
+            renderer.ctx.globalAlpha = opacity * 0.7;
+            renderer.ctx.fillText('MULTIPLIER', centerX, centerY + 35);
+
+            renderer.ctx.shadowBlur = 0;
+            renderer.restore();
+        }
+
+        // Draw progress to unlock (if close)
+        if (this.sustainedSeconds > 0 && !this.levelCompleted) {
             const progress = (this.sustainedSeconds / this.requiredSustainTime) * 100;
             renderer.drawText(`Unlock Progress: ${Math.round(progress)}%`,
                 renderer.width / 2, 120, {
@@ -1715,37 +2059,6 @@ class TypingLevel {
             renderer.restore();
         }
 
-        // Draw recovery notification (temporary)
-        if (this.recoveryNotification && this.recoveryNotification.timer > 0) {
-            const opacity = Math.min(1, this.recoveryNotification.timer);
-            renderer.save();
-            renderer.setAlpha(opacity);
-
-            // Draw notification with calming blue color
-            const notifWidth = renderer.measureText(this.recoveryNotification.text, 'large') + 60;
-            const notifHeight = 60;
-            const notifY = 200;
-
-            renderer.drawRect(renderer.width / 2 - notifWidth / 2, notifY, notifWidth, notifHeight, {
-                color: 'rgba(0, 50, 100, 0.95)',
-                filled: true
-            });
-            renderer.drawRect(renderer.width / 2 - notifWidth / 2, notifY, notifWidth, notifHeight, {
-                color: '#00aaff',
-                filled: false,
-                lineWidth: 2
-            });
-
-            renderer.drawText(this.recoveryNotification.text,
-                renderer.width / 2, notifY + notifHeight / 2, {
-                color: '#00aaff',
-                size: 'large',
-                align: 'center',
-                baseline: 'middle'
-            });
-
-            renderer.restore();
-        }
 
         // Draw simple instruction at top
         if (this.showInstruction && this.instructionOpacity > 0) {
@@ -1785,6 +2098,50 @@ class TypingLevel {
         // Draw score submission interstitial
         if (this.scoreSubmissionState) {
             this.renderScoreSubmission(renderer);
+        }
+
+        // Draw game over message
+        if (this.gameOver && !this.scoreSubmissionState) {
+            renderer.drawRect(0, 0, renderer.width, renderer.height, {
+                color: 'rgba(0, 0, 0, 0.8)',
+                filled: true
+            });
+
+            // Draw "GAME OVER" in large text
+            renderer.ctx.save();
+            renderer.ctx.font = 'bold 48px monospace';
+            renderer.ctx.fillStyle = '#ff0000';
+            renderer.ctx.textAlign = 'center';
+            renderer.ctx.textBaseline = 'middle';
+            renderer.ctx.shadowColor = '#ff0000';
+            renderer.ctx.shadowBlur = 20;
+            renderer.ctx.fillText('GAME OVER', renderer.width / 2, renderer.height / 2 - 80);
+            renderer.ctx.restore();
+
+            // Draw final score
+            renderer.ctx.save();
+            renderer.ctx.font = 'bold 36px monospace';
+            renderer.ctx.fillStyle = '#00ff00';
+            renderer.ctx.textAlign = 'center';
+            renderer.ctx.textBaseline = 'middle';
+            renderer.ctx.shadowColor = '#00ff00';
+            renderer.ctx.shadowBlur = 15;
+            const scoreText = `FINAL SCORE: ${this.score.toString().padStart(7, '0')}`;
+            renderer.ctx.fillText(scoreText, renderer.width / 2, renderer.height / 2 - 20);
+            renderer.ctx.restore();
+
+            // Draw restart instructions
+            renderer.drawText('Press R to restart', renderer.width / 2, renderer.height / 2 + 50, {
+                color: renderer.colors.dim,
+                size: 'normal',
+                align: 'center'
+            });
+
+            renderer.drawText('Press ESC to quit to main menu', renderer.width / 2, renderer.height / 2 + 80, {
+                color: renderer.colors.dim,
+                size: 'normal',
+                align: 'center'
+            });
         }
 
         // Draw level complete message
@@ -1860,13 +2217,10 @@ class TypingLevel {
         renderer.ctx.restore();
 
         // Draw score in HUGE arcade numbers with digital display effect
-        const stats = state.sessionData.stats || {};
         const scoreY = titleY + 70;
 
-        // Calculate a classic arcade-style score
-        const scoreValue = (stats.wpm || 0) * 100 +
-                          (stats.accuracy || 0) * 10 +
-                          (state.sessionData.stage || 0) * 1000;
+        // Use the actual arcade score from the session data
+        const scoreValue = state.sessionData.score || this.score || 0;
 
         // Draw score with digital display background
         const scoreText = scoreValue.toString().padStart(7, '0');
@@ -1891,26 +2245,16 @@ class TypingLevel {
         renderer.ctx.fillText(scoreText, renderer.width / 2, scoreY);
         renderer.ctx.restore();
 
-        // Draw stats in classic arcade format with better spacing
+        // Draw stage indicator only
         const statsY = scoreY + 70;
 
-        // Create a stats bar
         renderer.ctx.save();
-        renderer.ctx.font = '20px monospace';
-
-        // Stage indicator with icon
+        renderer.ctx.font = '24px monospace';
         renderer.ctx.fillStyle = '#ffaa00';
         renderer.ctx.textAlign = 'center';
-        renderer.ctx.fillText(`STAGE: ${state.sessionData.stage || 0}`, renderer.width / 2 - 150, statsY);
-
-        // WPM with icon
-        renderer.ctx.fillStyle = '#00ffff';
-        renderer.ctx.fillText(`WPM: ${stats.wpm || 0}`, renderer.width / 2, statsY);
-
-        // Accuracy with icon
-        renderer.ctx.fillStyle = '#ff00ff';
-        renderer.ctx.fillText(`ACC: ${stats.accuracy || 0}%`, renderer.width / 2 + 150, statsY);
-
+        renderer.ctx.shadowColor = '#ffaa00';
+        renderer.ctx.shadowBlur = 10;
+        renderer.ctx.fillText(`STAGE ${state.sessionData.stage || (this.currentStage + 1)}`, renderer.width / 2, statsY);
         renderer.ctx.restore();
 
         // Draw initials entry section
@@ -2063,6 +2407,12 @@ class TypingLevel {
         if (this.highScoreFanfareStop) {
             this.highScoreFanfareStop();
             this.highScoreFanfareStop = null;
+        }
+
+        // Stop hot streak music if playing
+        if (this.hotStreakMusicStop) {
+            this.hotStreakMusicStop();
+            this.hotStreakMusicStop = null;
         }
 
         if (this.keyHandler) {

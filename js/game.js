@@ -113,6 +113,10 @@ class TypeAttackGame {
             if (this.state.playerProgress.tmuxStage === undefined) {
                 this.state.playerProgress.tmuxStage = 0;
             }
+            // Migration: Add score tracking if it doesn't exist
+            if (this.state.playerProgress.typingScore === undefined) {
+                this.state.playerProgress.typingScore = 0;
+            }
 
             Utils.log.info('Progress loaded from save');
         } else {
@@ -137,6 +141,9 @@ class TypeAttackGame {
                 typingStage: 0,
                 vimStage: 0,
                 tmuxStage: 0,
+
+                // Score tracking
+                typingScore: 0,
 
                 // Statistics
                 totalSessions: 0,
@@ -561,6 +568,7 @@ class TypeAttackGame {
             typingStage: 0,
             vimStage: 0,
             tmuxStage: 0,
+            typingScore: 0,
             totalSessions: 0,
             totalChallenges: 0,
             recentChallenges: [],

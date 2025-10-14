@@ -69,10 +69,35 @@ body {
     pointer-events: auto;
 }
 
-/* Game Control Buttons */
+/* Game Controls and Score Display */
 #game-controls {
     display: flex;
     gap: 8px;
+    align-items: center;
+}
+
+/* Arcade Score Display */
+#score-display {
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.score-label {
+    font-size: 10px;
+    color: #ffff00;
+    letter-spacing: 2px;
+    opacity: 0.8;
+}
+
+.score-value {
+    font-size: 20px;
+    color: #00ff00;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
 .control-button {
