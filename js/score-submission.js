@@ -226,24 +226,24 @@ class ScoreSubmission {
       }
 
       // Calculate session hash
-      let sessionHash = null;
-      if (typeof sessionHash !== 'undefined' && sessionHash.calculate) {
+      let calculatedHash = null;
+      if (typeof SessionHash !== 'undefined' && SessionHash.calculate) {
         try {
-          sessionHash = await sessionHash.calculate(this.sessionData);
+          calculatedHash = await SessionHash.calculate(this.sessionData);
         } catch (error) {
           console.error('Failed to calculate session hash:', error);
           // Use fallback hash
-          sessionHash = this.calculateFallbackHash(this.sessionData);
+          calculatedHash = this.calculateFallbackHash(this.sessionData);
         }
       } else {
-        sessionHash = this.calculateFallbackHash(this.sessionData);
+        calculatedHash = this.calculateFallbackHash(this.sessionData);
       }
 
       // Prepare submission data
       const submission = {
         userId: identity.uuid,
         initials: initials,
-        sessionHash: sessionHash,
+        sessionHash: calculatedHash,
         sessionData: this.sessionData,
         timestamp: Date.now()
       };
