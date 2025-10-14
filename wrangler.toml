@@ -1,0 +1,19 @@
+name = "typeattack-leaderboard"
+main = "workers/leaderboard-api.js"
+compatibility_date = "2024-01-01"
+
+# Your Cloudflare account ID (replace with actual value)
+# account_id = "YOUR_ACCOUNT_ID"
+
+# KV Namespace binding
+[[kv_namespaces]]
+binding = "LEADERBOARD_QUEUE"
+# Replace with your actual KV namespace ID
+id = "YOUR_KV_NAMESPACE_ID"
+
+# Environment variables (optional)
+[vars]
+ALLOWED_ORIGIN = "*" # Update with your actual domain in production
+
+# Routes (optional - if you want to use a custom domain)
+# route = "leaderboard.yourdomain.com/*"
