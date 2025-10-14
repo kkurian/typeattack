@@ -114,6 +114,7 @@ class TypingLevel {
         this.submissionErrorTimer = 0;
         this.pendingSubmissionTrigger = null;
         this.pendingTestSubmission = false;
+        this.highScoreFanfareStop = null; // Track fanfare stop function
     }
 
     /**
@@ -1004,6 +1005,11 @@ class TypingLevel {
             this.recoveryMode = false;
             this.recoveryTimer = 0;
         }
+
+        // Start playing the looping high score fanfare
+        if (window.AudioManager && window.AudioManager.initialized) {
+            this.highScoreFanfareStop = window.AudioManager.playHighScoreFanfare();
+        }
     }
 
     /**
@@ -1199,6 +1205,12 @@ class TypingLevel {
         this.submissionInitials = '';
         this.submissionError = null;
         this.spawningEnabled = true;
+
+        // Stop the high score fanfare
+        if (this.highScoreFanfareStop) {
+            this.highScoreFanfareStop();
+            this.highScoreFanfareStop = null;
+        }
 
         // Restart session recording for continued play
         if (typeof sessionRecorder !== 'undefined') {
@@ -1812,160 +1824,204 @@ class TypingLevel {
 
         const fadeAlpha = state.fadeIn;
 
-        // Draw dark overlay with full opacity for better focus
+        // Draw full black overlay - classic arcade style
         renderer.save();
-        renderer.setAlpha(fadeAlpha * 0.95);
+        renderer.setAlpha(fadeAlpha);
         renderer.drawRect(0, 0, renderer.width, renderer.height, {
             color: '#000000',
             filled: true
         });
         renderer.restore();
 
-        // Draw submission box
-        const boxWidth = Math.min(600, renderer.width - 80);
-        const boxHeight = 400;
-        const boxX = (renderer.width - boxWidth) / 2;
-        const boxY = (renderer.height - boxHeight) / 2;
-
         renderer.save();
         renderer.setAlpha(fadeAlpha);
 
-        // Draw solid black background first for complete opacity
-        renderer.drawRect(boxX - 2, boxY - 2, boxWidth + 4, boxHeight + 4, {
-            color: '#000000',
-            filled: true
-        });
+        // Classic arcade title with flashing effect
+        const flashOn = Math.floor(Date.now() / 500) % 2 === 0;
+        const titleY = renderer.height * 0.20;
 
-        // Draw box background with brighter color
-        renderer.drawRect(boxX, boxY, boxWidth, boxHeight, {
-            color: '#0a0a1e',
-            filled: true
-        });
+        // Draw "NEW HIGH SCORE" or success message in classic arcade style
+        const title = state.status === 'success' ? 'GREAT JOB!' : 'HIGH SCORE';
+        const titleColor = flashOn ? '#ffff00' : '#ff0000';
 
-        // Draw box border with glow effect
+        // Create a pulsing glow effect
+        renderer.ctx.save();
+        renderer.ctx.shadowColor = titleColor;
+        renderer.ctx.shadowBlur = flashOn ? 30 : 15;
+
+        // Draw title in large arcade font
+        renderer.ctx.font = 'bold 48px monospace';
+        renderer.ctx.fillStyle = titleColor;
+        renderer.ctx.textAlign = 'center';
+        renderer.ctx.textBaseline = 'middle';
+        renderer.ctx.fillText(title, renderer.width / 2, titleY);
+
+        renderer.ctx.shadowBlur = 0;
+        renderer.ctx.restore();
+
+        // Draw score in HUGE arcade numbers with digital display effect
+        const stats = state.sessionData.stats || {};
+        const scoreY = titleY + 70;
+
+        // Calculate a classic arcade-style score
+        const scoreValue = (stats.wpm || 0) * 100 +
+                          (stats.accuracy || 0) * 10 +
+                          (state.sessionData.stage || 0) * 1000;
+
+        // Draw score with digital display background
+        const scoreText = scoreValue.toString().padStart(7, '0');
+        renderer.ctx.save();
+
+        // Draw dark background for digital display effect
+        renderer.ctx.fillStyle = '#111111';
+        renderer.ctx.fillRect(renderer.width / 2 - 140, scoreY - 30, 280, 60);
+
+        // Draw border around score
+        renderer.ctx.strokeStyle = '#00ff00';
+        renderer.ctx.lineWidth = 2;
+        renderer.ctx.strokeRect(renderer.width / 2 - 140, scoreY - 30, 280, 60);
+
+        // Draw the score with green digital display color
+        renderer.ctx.font = 'bold 48px monospace';
+        renderer.ctx.fillStyle = '#00ff00';
+        renderer.ctx.textAlign = 'center';
+        renderer.ctx.textBaseline = 'middle';
         renderer.ctx.shadowColor = '#00ff00';
         renderer.ctx.shadowBlur = 10;
-        renderer.drawRect(boxX, boxY, boxWidth, boxHeight, {
-            color: '#00ff00',
-            filled: false,
-            lineWidth: 3
-        });
-        renderer.ctx.shadowBlur = 0;
+        renderer.ctx.fillText(scoreText, renderer.width / 2, scoreY);
+        renderer.ctx.restore();
 
-        // Draw title
-        const titleY = boxY + 50;
-        renderer.drawText('SUBMIT YOUR SCORE!', renderer.width / 2, titleY, {
-            color: '#00ff00',
-            size: 'huge',
-            align: 'center',
-            baseline: 'middle'
-        });
+        // Draw stats in classic arcade format with better spacing
+        const statsY = scoreY + 70;
 
-        // Draw performance stats
-        const stats = state.sessionData.stats || {};
-        const statsY = titleY + 80;
+        // Create a stats bar
+        renderer.ctx.save();
+        renderer.ctx.font = '20px monospace';
 
-        renderer.drawText(`WPM: ${stats.wpm || 0}`, renderer.width / 2 - 100, statsY, {
-            color: '#00ffff',
-            size: 'large',
-            align: 'center',
-            baseline: 'middle'
-        });
+        // Stage indicator with icon
+        renderer.ctx.fillStyle = '#ffaa00';
+        renderer.ctx.textAlign = 'center';
+        renderer.ctx.fillText(`STAGE: ${state.sessionData.stage || 0}`, renderer.width / 2 - 150, statsY);
 
-        renderer.drawText(`ACCURACY: ${stats.accuracy || 0}%`, renderer.width / 2 + 100, statsY, {
-            color: '#00ffff',
-            size: 'large',
-            align: 'center',
-            baseline: 'middle'
-        });
+        // WPM with icon
+        renderer.ctx.fillStyle = '#00ffff';
+        renderer.ctx.fillText(`WPM: ${stats.wpm || 0}`, renderer.width / 2, statsY);
 
-        renderer.drawText(`STAGE: ${state.sessionData.stage || 0}`, renderer.width / 2, statsY + 40, {
-            color: '#00ffff',
-            size: 'large',
-            align: 'center',
-            baseline: 'middle'
-        });
+        // Accuracy with icon
+        renderer.ctx.fillStyle = '#ff00ff';
+        renderer.ctx.fillText(`ACC: ${stats.accuracy || 0}%`, renderer.width / 2 + 150, statsY);
 
-        // Draw initials input area
-        const inputY = statsY + 100;
-        renderer.drawText('Enter Your Initials:', renderer.width / 2, inputY, {
-            color: '#ffffff',
-            size: 'normal',
-            align: 'center',
-            baseline: 'middle'
-        });
+        renderer.ctx.restore();
 
-        // Draw initials boxes
-        const boxSize = 50;
-        const boxSpacing = 10;
+        // Draw initials entry section
+        const initialsY = statsY + 80;
+
+        if (state.status === 'input') {
+            // Classic blinking "ENTER YOUR INITIALS" prompt
+            const blinkPrompt = Math.floor(Date.now() / 700) % 2 === 0;
+
+            if (blinkPrompt) {
+                renderer.ctx.save();
+                renderer.ctx.font = 'bold 28px monospace';
+                renderer.ctx.fillStyle = '#ffff00';
+                renderer.ctx.textAlign = 'center';
+                renderer.ctx.shadowColor = '#ffff00';
+                renderer.ctx.shadowBlur = 15;
+                renderer.ctx.fillText('ENTER YOUR INITIALS', renderer.width / 2, initialsY);
+                renderer.ctx.restore();
+            }
+        }
+
+        // Draw classic arcade initial entry boxes
+        const boxSize = 60;
+        const boxSpacing = 20;
         const totalWidth = (boxSize * 3) + (boxSpacing * 2);
         const startX = (renderer.width - totalWidth) / 2;
-        const boxesY = inputY + 40;
+        const boxesY = initialsY + 40;
 
         for (let i = 0; i < 3; i++) {
             const x = startX + (i * (boxSize + boxSpacing));
 
-            // Draw box
-            renderer.drawRect(x, boxesY, boxSize, boxSize, {
-                color: i < this.submissionInitials.length ? '#00ff00' : '#666666',
-                filled: false,
-                lineWidth: 2
-            });
+            // Draw box background
+            renderer.ctx.save();
+            renderer.ctx.fillStyle = '#111111';
+            renderer.ctx.fillRect(x, boxesY, boxSize, boxSize);
+
+            // Draw box border with color based on state
+            const borderColor = i < this.submissionInitials.length ? '#00ff00' :
+                               (i === this.submissionInitials.length ? '#ffff00' : '#444444');
+            renderer.ctx.strokeStyle = borderColor;
+            renderer.ctx.lineWidth = 3;
+            renderer.ctx.strokeRect(x, boxesY, boxSize, boxSize);
 
             // Draw letter if exists
             if (i < this.submissionInitials.length) {
-                renderer.drawText(this.submissionInitials[i], x + boxSize / 2, boxesY + boxSize / 2, {
-                    color: '#00ff00',
-                    size: 'huge',
-                    align: 'center',
-                    baseline: 'middle'
-                });
-            } else if (i === this.submissionInitials.length) {
-                // Draw blinking cursor
+                renderer.ctx.font = 'bold 40px monospace';
+                renderer.ctx.fillStyle = '#00ff00';
+                renderer.ctx.textAlign = 'center';
+                renderer.ctx.textBaseline = 'middle';
+                renderer.ctx.shadowColor = '#00ff00';
+                renderer.ctx.shadowBlur = 10;
+                renderer.ctx.fillText(this.submissionInitials[i], x + boxSize / 2, boxesY + boxSize / 2);
+            } else if (i === this.submissionInitials.length && state.status === 'input') {
+                // Draw blinking underscore cursor
                 const cursorVisible = Math.floor(this.submissionCursorBlink * 2) % 2 === 0;
                 if (cursorVisible) {
-                    renderer.drawRect(x + boxSize / 2 - 2, boxesY + 10, 4, boxSize - 20, {
-                        color: '#ffffff',
-                        filled: true
-                    });
+                    renderer.ctx.fillStyle = '#ffffff';
+                    renderer.ctx.fillRect(x + 15, boxesY + boxSize - 15, boxSize - 30, 4);
                 }
+            } else {
+                // Draw dim underscore for empty slots
+                renderer.ctx.fillStyle = '#333333';
+                renderer.ctx.fillRect(x + 15, boxesY + boxSize - 15, boxSize - 30, 4);
             }
+
+            renderer.ctx.restore();
         }
 
-        // Draw status/error message
+        // Draw status messages with arcade styling
+        const messageY = boxesY + boxSize + 40;
+
         if (state.status === 'submitting') {
-            renderer.drawText('Submitting...', renderer.width / 2, boxesY + 80, {
-                color: '#00aaff',
-                size: 'normal',
-                align: 'center',
-                baseline: 'middle'
-            });
+            // Animated dots for submitting
+            const dots = '.'.repeat((Math.floor(Date.now() / 500) % 3) + 1);
+            renderer.ctx.save();
+            renderer.ctx.font = '20px monospace';
+            renderer.ctx.fillStyle = '#00aaff';
+            renderer.ctx.textAlign = 'center';
+            renderer.ctx.fillText(`TRANSMITTING${dots}`, renderer.width / 2, messageY);
+            renderer.ctx.restore();
         } else if (state.status === 'success') {
-            renderer.drawText('✓ Score Submitted!', renderer.width / 2, boxesY + 80, {
-                color: '#00ff00',
-                size: 'large',
-                align: 'center',
-                baseline: 'middle'
-            });
+            // Success message with flashing
+            const successFlash = Math.floor(Date.now() / 300) % 2 === 0;
+            renderer.ctx.save();
+            renderer.ctx.font = 'bold 28px monospace';
+            renderer.ctx.fillStyle = successFlash ? '#00ff00' : '#ffffff';
+            renderer.ctx.textAlign = 'center';
+            renderer.ctx.shadowColor = '#00ff00';
+            renderer.ctx.shadowBlur = 20;
+            renderer.ctx.fillText('SCORE RECORDED!', renderer.width / 2, messageY);
+            renderer.ctx.restore();
         } else if (state.status === 'error' || this.submissionError) {
-            const errorMsg = this.submissionError || 'Submission failed';
-            renderer.drawText(errorMsg, renderer.width / 2, boxesY + 80, {
-                color: '#ff4444',
-                size: 'normal',
-                align: 'center',
-                baseline: 'middle'
-            });
+            // Error message
+            const errorMsg = this.submissionError || 'TRANSMISSION FAILED';
+            renderer.ctx.save();
+            renderer.ctx.font = '20px monospace';
+            renderer.ctx.fillStyle = '#ff4444';
+            renderer.ctx.textAlign = 'center';
+            renderer.ctx.fillText(errorMsg, renderer.width / 2, messageY);
+            renderer.ctx.restore();
         }
 
-        // Draw instructions (only during input)
+        // Draw instructions at the bottom (only during input)
         if (state.status === 'input') {
-            const instructY = boxY + boxHeight - 40;
-            renderer.drawText('Press ENTER to submit', renderer.width / 2, instructY, {
-                color: '#999999',
-                size: 'small',
-                align: 'center',
-                baseline: 'middle'
-            });
+            const instructY = renderer.height - 60;
+            renderer.ctx.save();
+            renderer.ctx.font = '16px monospace';
+            renderer.ctx.fillStyle = '#888888';
+            renderer.ctx.textAlign = 'center';
+            renderer.ctx.fillText('PRESS ENTER TO SUBMIT', renderer.width / 2, instructY);
+            renderer.ctx.restore();
         }
 
         renderer.restore();
@@ -2002,6 +2058,12 @@ class TypingLevel {
     destroy() {
         // Clear all timers before destroying
         this.clearAllTimers();
+
+        // Stop high score fanfare if playing
+        if (this.highScoreFanfareStop) {
+            this.highScoreFanfareStop();
+            this.highScoreFanfareStop = null;
+        }
 
         if (this.keyHandler) {
             this.game.keyboard.off('keydown', this.keyHandler);

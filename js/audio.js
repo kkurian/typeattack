@@ -487,6 +487,224 @@ class AudioManager {
     }
 
     /**
+     * Play looping high score fanfare
+     * Creates an upbeat, retro arcade-style loop
+     * @returns {Function} Stop function to end the loop
+     */
+    playHighScoreFanfare() {
+        if (!this.enabled || !this.initialized) return () => {};
+
+        let isPlaying = true;
+        const activeOscillators = new Set();
+        const loopDuration = 4.0; // 4 second loop for more musical content
+
+        // Create a looping pattern
+        const createLoop = (startTime) => {
+            if (!isPlaying) return;
+
+            // Extended pattern: upbeat arcade-style melody (4 bars at 120 BPM)
+            const notes = [
+                // Bar 1 - Main theme
+                { freq: 523.25, start: 0.0, duration: 0.2 },     // C5
+                { freq: 659.25, start: 0.25, duration: 0.2 },    // E5
+                { freq: 783.99, start: 0.5, duration: 0.2 },     // G5
+                { freq: 659.25, start: 0.75, duration: 0.2 },    // E5
+
+                // Bar 2 - Variation
+                { freq: 698.46, start: 1.0, duration: 0.2 },     // F5
+                { freq: 880.00, start: 1.25, duration: 0.2 },    // A5
+                { freq: 783.99, start: 1.5, duration: 0.2 },     // G5
+                { freq: 659.25, start: 1.75, duration: 0.2 },    // E5
+
+                // Bar 3 - Response
+                { freq: 587.33, start: 2.0, duration: 0.2 },     // D5
+                { freq: 659.25, start: 2.25, duration: 0.2 },    // E5
+                { freq: 698.46, start: 2.5, duration: 0.2 },     // F5
+                { freq: 587.33, start: 2.75, duration: 0.2 },    // D5
+
+                // Bar 4 - Resolution (leads back to C)
+                { freq: 659.25, start: 3.0, duration: 0.2 },     // E5
+                { freq: 587.33, start: 3.25, duration: 0.2 },    // D5
+                { freq: 523.25, start: 3.5, duration: 0.15 },    // C5
+                { freq: 523.25, start: 3.75, duration: 0.15 },   // C5 (repeat for emphasis)
+
+                // Add some decoration notes
+                { freq: 392.00, start: 0.12, duration: 0.1 },    // G4 (grace note)
+                { freq: 440.00, start: 1.12, duration: 0.1 },    // A4 (grace note)
+                { freq: 392.00, start: 2.12, duration: 0.1 },    // G4 (grace note)
+                { freq: 440.00, start: 3.37, duration: 0.1 },    // A4 (grace note)
+            ];
+
+            // Extended bass line pattern with walking bass
+            const bassNotes = [
+                // Bar 1
+                { freq: 130.81, start: 0.0, duration: 0.4 },     // C3
+                { freq: 164.81, start: 0.5, duration: 0.4 },     // E3
+
+                // Bar 2
+                { freq: 174.61, start: 1.0, duration: 0.4 },     // F3
+                { freq: 196.00, start: 1.5, duration: 0.4 },     // G3
+
+                // Bar 3
+                { freq: 196.00, start: 2.0, duration: 0.4 },     // G3
+                { freq: 174.61, start: 2.5, duration: 0.4 },     // F3
+
+                // Bar 4
+                { freq: 164.81, start: 3.0, duration: 0.4 },     // E3
+                { freq: 130.81, start: 3.5, duration: 0.4 },     // C3 (resolves back)
+            ];
+
+            // Add a middle harmony voice for richness
+            const harmonyNotes = [
+                // Bar 1
+                { freq: 329.63, start: 0.0, duration: 0.4 },     // E4
+                { freq: 392.00, start: 0.5, duration: 0.4 },     // G4
+
+                // Bar 2
+                { freq: 440.00, start: 1.0, duration: 0.4 },     // A4
+                { freq: 392.00, start: 1.5, duration: 0.4 },     // G4
+
+                // Bar 3
+                { freq: 349.23, start: 2.0, duration: 0.4 },     // F4
+                { freq: 329.63, start: 2.5, duration: 0.4 },     // E4
+
+                // Bar 4
+                { freq: 293.66, start: 3.0, duration: 0.4 },     // D4
+                { freq: 261.63, start: 3.5, duration: 0.4 },     // C4
+            ];
+
+            // Create melody
+            notes.forEach(note => {
+                if (!isPlaying) return;
+
+                const oscillator = this.context.createOscillator();
+                const gainNode = this.context.createGain();
+                const filter = this.context.createBiquadFilter();
+
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(this.masterGain);
+
+                oscillator.type = 'square'; // Retro game sound
+                oscillator.frequency.setValueAtTime(note.freq, startTime + note.start);
+
+                // Filter for less harsh square wave
+                filter.type = 'lowpass';
+                filter.frequency.value = 2500;
+                filter.Q.value = 0.5;
+
+                // Smooth volume envelope to avoid clicks
+                const attackTime = 0.005;
+                const releaseTime = 0.01;
+                gainNode.gain.setValueAtTime(0, startTime + note.start);
+                gainNode.gain.linearRampToValueAtTime(0.15, startTime + note.start + attackTime);
+                gainNode.gain.setValueAtTime(0.15, startTime + note.start + note.duration - releaseTime);
+                gainNode.gain.linearRampToValueAtTime(0, startTime + note.start + note.duration);
+
+                oscillator.start(startTime + note.start);
+                oscillator.stop(startTime + note.start + note.duration);
+
+                activeOscillators.add(oscillator);
+                oscillator.onended = () => activeOscillators.delete(oscillator);
+            });
+
+            // Create bass line
+            bassNotes.forEach(note => {
+                if (!isPlaying) return;
+
+                const oscillator = this.context.createOscillator();
+                const gainNode = this.context.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(this.masterGain);
+
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(note.freq, startTime + note.start);
+
+                // Smooth volume envelope
+                const attackTime = 0.01;
+                const releaseTime = 0.02;
+                gainNode.gain.setValueAtTime(0, startTime + note.start);
+                gainNode.gain.linearRampToValueAtTime(0.12, startTime + note.start + attackTime);
+                gainNode.gain.setValueAtTime(0.12, startTime + note.start + note.duration - releaseTime);
+                gainNode.gain.linearRampToValueAtTime(0, startTime + note.start + note.duration);
+
+                oscillator.start(startTime + note.start);
+                oscillator.stop(startTime + note.start + note.duration);
+
+                activeOscillators.add(oscillator);
+                oscillator.onended = () => activeOscillators.delete(oscillator);
+            });
+
+            // Create harmony line
+            harmonyNotes.forEach(note => {
+                if (!isPlaying) return;
+
+                const oscillator = this.context.createOscillator();
+                const gainNode = this.context.createGain();
+                const filter = this.context.createBiquadFilter();
+
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(this.masterGain);
+
+                oscillator.type = 'triangle'; // Softer than square
+                oscillator.frequency.setValueAtTime(note.freq, startTime + note.start);
+
+                // Gentle filter
+                filter.type = 'lowpass';
+                filter.frequency.value = 3000;
+
+                // Smooth volume envelope (quieter than melody)
+                const attackTime = 0.01;
+                const releaseTime = 0.02;
+                gainNode.gain.setValueAtTime(0, startTime + note.start);
+                gainNode.gain.linearRampToValueAtTime(0.08, startTime + note.start + attackTime);
+                gainNode.gain.setValueAtTime(0.08, startTime + note.start + note.duration - releaseTime);
+                gainNode.gain.linearRampToValueAtTime(0, startTime + note.start + note.duration);
+
+                oscillator.start(startTime + note.start);
+                oscillator.stop(startTime + note.start + note.duration);
+
+                activeOscillators.add(oscillator);
+                oscillator.onended = () => activeOscillators.delete(oscillator);
+            });
+
+            // Schedule next loop - use Web Audio scheduling for perfect timing
+            if (isPlaying) {
+                // Schedule next loop to start exactly when this one ends
+                const nextLoopTime = startTime + loopDuration;
+                const timeUntilNextLoop = (nextLoopTime - this.context.currentTime) * 1000;
+
+                if (timeUntilNextLoop > 0) {
+                    setTimeout(() => {
+                        if (isPlaying) {
+                            createLoop(nextLoopTime);
+                        }
+                    }, Math.max(0, timeUntilNextLoop - 10)); // Start scheduling 10ms early
+                }
+            }
+        };
+
+        // Start the first loop immediately
+        createLoop(this.context.currentTime);
+
+        // Return stop function
+        return () => {
+            isPlaying = false;
+            // Stop any still-playing oscillators
+            activeOscillators.forEach(osc => {
+                try {
+                    osc.stop();
+                } catch(e) {
+                    // Oscillator might have already stopped
+                }
+            });
+            activeOscillators.clear();
+        };
+    }
+
+    /**
      * Play explosion sound (for word destruction)
      */
     playExplosion() {
