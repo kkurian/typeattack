@@ -114,6 +114,13 @@ class TypingLevel {
         this.reset();
         this.startTime = Date.now();
 
+        // Start session recording for leaderboard
+        if (typeof sessionRecorder !== 'undefined') {
+            // Use timestamp as seed for consistency
+            const seed = Date.now();
+            sessionRecorder.startSession(seed);
+        }
+
         // Restore saved stage from player progress
         if (this.game.state.playerProgress.typingStage !== undefined) {
             this.currentStage = this.game.state.playerProgress.typingStage;
@@ -428,6 +435,16 @@ class TypingLevel {
         };
 
         this.words.push(word);
+
+        // Record word spawn for leaderboard
+        if (typeof sessionRecorder !== 'undefined' && sessionRecorder.isSessionActive()) {
+            word.recordIndex = sessionRecorder.addWord({
+                text: word.text,
+                x: word.x,
+                y: word.y,
+                word: word.text
+            });
+        }
     }
 
     /**
@@ -506,6 +523,11 @@ class TypingLevel {
             // Register correct input (resets error cooldown)
             this.game.keyboard.registerCorrect();
 
+            // Record correct keystroke for leaderboard
+            if (typeof sessionRecorder !== 'undefined' && sessionRecorder.isSessionActive()) {
+                sessionRecorder.recordKeystroke(key, activeWord.recordIndex || 0, true);
+            }
+
             // Check if word is complete
             if (activeWord.typedIndex >= activeWord.text.length) {
                 // Mark word as complete but delay the laser effect
@@ -523,6 +545,11 @@ class TypingLevel {
 
             // Register error for cooldown tracking
             this.game.keyboard.registerError();
+
+            // Record incorrect keystroke for leaderboard
+            if (typeof sessionRecorder !== 'undefined' && sessionRecorder.isSessionActive()) {
+                sessionRecorder.recordKeystroke(key, activeWord.recordIndex || 0, false);
+            }
         }
     }
 
@@ -538,6 +565,11 @@ class TypingLevel {
 
         // Clear typed text now that the word is complete
         this.typedText = '';
+
+        // Record word completion for leaderboard
+        if (typeof sessionRecorder !== 'undefined' && sessionRecorder.isSessionActive()) {
+            sessionRecorder.completeWord(word.recordIndex || 0);
+        }
 
         // Store word reference for laser to find it
         word.hitTime = Date.now();
@@ -824,6 +856,11 @@ class TypingLevel {
                 this.game.state.playerProgress.typingStage = this.currentStage;
                 this.game.saveProgress();
 
+                // Update session recorder stage
+                if (typeof sessionRecorder !== 'undefined' && sessionRecorder.isSessionActive()) {
+                    sessionRecorder.updateStage(this.currentStage + 1);
+                }
+
                 // For single letter stages, keep speed slower
                 const isLetterStage = this.currentStage < 10; // First 10 stages are single letters
 
@@ -943,6 +980,18 @@ class TypingLevel {
 
         // Clear remaining words
         this.words = [];
+
+        // End session and show score submission
+        if (typeof sessionRecorder !== 'undefined' && sessionRecorder.isSessionActive()) {
+            const sessionData = sessionRecorder.endSession();
+            if (sessionData && typeof scoreSubmission !== 'undefined') {
+                // Wait a moment for the level complete animation to show
+                setTimeout(async () => {
+                    const exportedData = await sessionRecorder.exportForSubmission();
+                    scoreSubmission.showSubmissionModal(exportedData);
+                }, 2000);
+            }
+        }
 
         // Trigger level complete animation
         this.levelCompleteTimer = 0;
