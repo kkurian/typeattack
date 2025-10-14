@@ -145,7 +145,7 @@ class SessionHash {
    * Calculate hash synchronously using a fallback (for older browsers)
    * Note: This is less secure and should only be used as a fallback
    * @param {Object} sessionData - Complete session data
-   * @returns {string} Simple hash string
+   * @returns {string} Simple hash string (64 chars to match SHA-256 length)
    */
   calculateFallback(sessionData) {
     console.warn('Using fallback hash calculation - less secure than Web Crypto API');
@@ -154,15 +154,26 @@ class SessionHash {
     const jsonString = JSON.stringify(deterministicData, null, 0);
 
     // Simple hash function (not cryptographically secure)
-    let hash = 0;
+    let hash1 = 0, hash2 = 0, hash3 = 0, hash4 = 0;
     for (let i = 0; i < jsonString.length; i++) {
       const char = jsonString.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+      hash1 = ((hash1 << 5) - hash1) + char;
+      hash2 = ((hash2 << 3) - hash2) + char + i;
+      hash3 = ((hash3 << 7) - hash3) + char * (i + 1);
+      hash4 = ((hash4 << 11) - hash4) + char - i;
+      hash1 = hash1 & hash1; // Convert to 32-bit integer
+      hash2 = hash2 & hash2;
+      hash3 = hash3 & hash3;
+      hash4 = hash4 & hash4;
     }
 
-    // Convert to hex-like string
-    return Math.abs(hash).toString(16).padStart(16, '0');
+    // Combine hashes to create 64-character string (matching SHA-256 length)
+    const part1 = Math.abs(hash1).toString(16).padStart(16, '0');
+    const part2 = Math.abs(hash2).toString(16).padStart(16, '0');
+    const part3 = Math.abs(hash3).toString(16).padStart(16, '0');
+    const part4 = Math.abs(hash4).toString(16).padStart(16, '0');
+
+    return part1 + part2 + part3 + part4;
   }
 }
 

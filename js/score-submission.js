@@ -227,9 +227,9 @@ class ScoreSubmission {
 
       // Calculate session hash
       let calculatedHash = null;
-      if (typeof SessionHash !== 'undefined' && SessionHash.calculate) {
+      if (typeof sessionHash !== 'undefined' && sessionHash.calculate) {
         try {
-          calculatedHash = await SessionHash.calculate(this.sessionData);
+          calculatedHash = await sessionHash.calculate(this.sessionData);
         } catch (error) {
           console.error('Failed to calculate session hash:', error);
           // Use fallback hash
@@ -361,23 +361,36 @@ class ScoreSubmission {
   /**
    * Calculate fallback hash if Web Crypto not available
    * @param {Object} data - Session data
-   * @returns {string} Simple hash string
+   * @returns {string} Simple hash string (64 chars to match SHA-256 length)
    */
   calculateFallbackHash(data) {
     const str = JSON.stringify({
       seed: data.seed,
       stage: data.stage,
-      words: data.words.map(w => w.text).sort()
+      words: data.words ? data.words.map(w => w.text).sort() : []
     });
 
-    let hash = 0;
+    // Simple hash function (not cryptographically secure)
+    let hash1 = 0, hash2 = 0, hash3 = 0, hash4 = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
+      hash1 = ((hash1 << 5) - hash1) + char;
+      hash2 = ((hash2 << 3) - hash2) + char + i;
+      hash3 = ((hash3 << 7) - hash3) + char * (i + 1);
+      hash4 = ((hash4 << 11) - hash4) + char - i;
+      hash1 = hash1 & hash1;
+      hash2 = hash2 & hash2;
+      hash3 = hash3 & hash3;
+      hash4 = hash4 & hash4;
     }
 
-    return Math.abs(hash).toString(16).padStart(16, '0');
+    // Combine hashes to create 64-character string
+    const part1 = Math.abs(hash1).toString(16).padStart(16, '0');
+    const part2 = Math.abs(hash2).toString(16).padStart(16, '0');
+    const part3 = Math.abs(hash3).toString(16).padStart(16, '0');
+    const part4 = Math.abs(hash4).toString(16).padStart(16, '0');
+
+    return part1 + part2 + part3 + part4;
   }
 
   /**
